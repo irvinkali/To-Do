@@ -1,9 +1,14 @@
 # Momentum — a calmer to-do
 
-A single-file, private, ADHD-aware daily planner. Open `index.html` in any
-browser. Everything saves locally in that browser (nothing leaves your device,
-no account, no internet needed). Built to sit alongside the Optimum Safety tools
-— same near-black + red look — but this one is personal.
+A single-file, ADHD-aware **daily lens** over your existing synced task list.
+Open `index.html` in any browser. It reads and writes the **same tasks as your
+command app** (via that app's Supabase), so everything syncs across your devices
+automatically. Built to sit alongside the Optimum Safety tools — same near-black
++ red look — but this one is personal.
+
+It is deliberately *not* another separate silo. Your command app stays your
+capture point and warehouse; Momentum sits on top and answers only "what am I
+doing today, and did today count?"
 
 ---
 
@@ -140,10 +145,40 @@ the *minimum* version is the whole thing.
   nagging. Blank is a valid, good state.
 - **No streaks-you-can-break, no red overdue badges.** Pressure mechanics
   backfire for anxiety. Momentum nudges; it never scolds.
-- **One place, low friction.** Four tabs, quick-add always visible, works
-  offline. The fastest system is the one you'll actually open.
-- **Private by default.** All data lives in your browser's `localStorage`. No
-  server, no sign-in, no sync (yet — see below).
+- **One place, low friction.** Four tabs, quick-add always visible. The fastest
+  system is the one you'll actually open.
+- **It never scolds and never destroys.** No streaks to break, no red "OVERDUE."
+  And Momentum only ever *adds* to a task or marks it done — see below.
+
+---
+
+## How it connects to your command app
+
+Momentum and the command app share one Supabase `tasks` table. Each task is
+stored as a flexible JSON blob, so Momentum layers its own fields onto the *same*
+task without changing anything the command app relies on:
+
+| Command-app field | How Momentum uses it |
+|---|---|
+| `category` (rolled up to work / personal) | the **area filter** and the coloured area chip |
+| `done` / `status` | the **checkbox** (checking sets `status: "Done"`) |
+| `steps` (`{id, text, done}`) | **subtasks** — written back in the exact same shape |
+| `title`, `note`, `dueDate` | shown as-is (due date is a gentle chip, never red) |
+| *new, additive:* `mBig3`, `mSize`, `mEnergy`, `mDay`, `mDoneDay` | the Big 3, energy/size tags, and "on today's plan" |
+
+**Safety guarantees (built into the code):**
+- Every write is an **upsert** (`resolution=merge-duplicates`). Momentum never
+  issues a DELETE.
+- The **✕** on a task means *"take it off today's plan"* (`mDay = null`) — the
+  task stays in your warehouse and in the command app, untouched.
+- Momentum-only fields are prefixed `m…` and ignored by the command app, so the
+  two apps can't step on each other.
+- If the cloud is unreachable, it falls back to the same `localStorage` backup
+  key the command app uses and shows an **offline** dot; writes resume on
+  reconnect.
+
+It refreshes from the cloud on window-focus and every 60 s, so a task you add by
+voice in the command app shows up in Momentum shortly after.
 
 ---
 
@@ -151,18 +186,13 @@ the *minimum* version is the whole thing.
 
 No build step. Options:
 
-- **Simplest:** download `index.html` and open it. Bookmark it. Done.
+- **Simplest:** open `index.html`. Bookmark it.
 - **On your phone:** host it (Netlify drag-and-drop, or add it to the Optimum
-  tools portal) and "Add to Home Screen" so it opens like an app.
+  tools portal) and "Add to Home Screen" so it opens like an app. Because it's
+  cloud-synced, your phone and laptop show the same list automatically.
 - **Alongside the portal:** drop this folder in as `tools/momentum/` and add one
   card to the `TOOLS` array in the portal's `dashboard.html`. It already uses the
   same brand tokens, so it'll match.
-
-> Note: because storage is per-browser, your tasks won't auto-sync between your
-> phone and laptop yet. For now there's **manual sync**: the **Export backup** /
-> **Import backup** buttons at the bottom download your whole list as a JSON file
-> and load it on another device. Real automatic sync is the next build (a small
-> sync layer behind the Optimum portal login).
 
 ---
 
@@ -170,7 +200,8 @@ No build step. Options:
 
 - **Google Calendar sync** — push your Big 3 / time-blocks into your calendar as
   real blocks (you already have Calendar connected).
-- **Cross-device sync** so phone and laptop share one list.
+- **Read the command app's `inbox` table** — surface raw voice captures as
+  unsorted items to convert into tasks.
 - **A weekly review view** — a gentle Sunday look-back, wins tallied.
 - **Recurring tasks** and a light morning reminder.
 

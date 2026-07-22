@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Momentum — a calmer to-do</title>
-  <meta name="description" content="An ADHD-friendly daily planner: brain dump, a Big 3, energy-matched tasks, a focus timer, and a guilt-free shutdown." />
+  <meta name="description" content="An ADHD-friendly daily lens over your synced task list: a Big 3, batched small tasks, a focus timer, and a guilt-free shutdown." />
   <style>
     /* ---- Brand tokens (mirrors Optimum Safety tools portal) ---- */
     :root {
@@ -66,8 +66,13 @@
     }
     .brand-title { font-size: 16px; font-weight: 700; }
     .brand-sub { font-size: 12px; color: var(--os-text-muted); }
+    .header-right { display: flex; align-items: center; gap: 16px; }
     .header-date { font-size: 13px; color: var(--os-text-muted); text-align: right; }
     .header-date strong { color: var(--os-text); display: block; font-size: 14px; }
+    .sync { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--os-text-muted); }
+    .sync-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--os-green); flex: none; }
+    .sync-dot.syncing { background: var(--os-amber); }
+    .sync-dot.error { background: var(--os-red); }
 
     /* ---- Tab bar ---- */
     .tabs {
@@ -132,7 +137,7 @@
     /* ---- Section labels ---- */
     .section-label {
       font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
-      color: var(--os-text-muted); margin: 24px 0 10px; display: flex; align-items: center; gap: 8px;
+      color: var(--os-text-muted); margin: 24px 0 10px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
     }
     .section-label .hint { text-transform: none; letter-spacing: 0; font-weight: 400; color: var(--os-text-faint); font-size: 12px; }
     .section-label:first-child { margin-top: 0; }
@@ -161,20 +166,23 @@
     }
 
     .task-body { flex: 1; min-width: 0; }
-    .task-title { font-size: 15px; word-wrap: break-word; }
+    .task-title { font-size: 15px; word-wrap: break-word; overflow-wrap: anywhere; }
     .task-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; align-items: center; }
 
     .chip {
       display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700;
-      padding: 2px 8px; border-radius: 999px; letter-spacing: .02em; cursor: pointer; border: 1px solid transparent;
+      padding: 2px 8px; border-radius: 999px; letter-spacing: .02em; cursor: default; border: 1px solid transparent;
     }
-    .chip-area { background: var(--os-bg-input); color: var(--os-text-muted); }
+    .chip-work { background: var(--os-blue-dim); color: var(--os-blue); }
+    .chip-personal { background: var(--os-green-dim); color: var(--os-green); }
+    .chip-cat { background: var(--os-bg-input); color: var(--os-text-muted); }
     .chip-quick { background: var(--os-blue-dim); color: var(--os-blue); }
     .chip-focus { background: var(--os-purple-dim); color: var(--os-purple); }
     .chip-deep { background: var(--os-amber-dim); color: var(--os-amber); }
     .chip-low { background: var(--os-bg-input); color: var(--os-text-faint); }
     .chip-med { background: var(--os-blue-dim); color: var(--os-blue); }
     .chip-high { background: var(--os-green-dim); color: var(--os-green); }
+    .chip-due { background: var(--os-amber-dim); color: var(--os-amber); }
     .chip-plain { background: var(--os-bg-input); color: var(--os-text-muted); }
 
     .task-actions { display: flex; gap: 2px; align-items: center; flex: none; }
@@ -185,7 +193,7 @@
     .icon-btn:hover { color: var(--os-text); background: var(--os-bg-input); }
     .icon-btn.star.on { color: var(--os-red); }
 
-    /* subtasks */
+    /* subtasks / steps */
     .subtasks { margin-top: 10px; padding-left: 2px; border-left: 1px solid var(--os-border); }
     .subtask { display: flex; gap: 9px; align-items: center; padding: 4px 0 4px 12px; }
     .subtask .mini-check {
@@ -194,11 +202,9 @@
     }
     .subtask .mini-check.checked { background: var(--os-green); border-color: var(--os-green); }
     .subtask .mini-check.checked::after { content:"✓"; color:#06210f; font-size:10px; font-weight:900; position:absolute; top:-1px; left:2px; }
-    .subtask span { font-size: 13px; color: var(--os-text-muted); }
+    .subtask span { font-size: 13px; color: var(--os-text-muted); overflow-wrap: anywhere; }
     .subtask span.done { text-decoration: line-through; color: var(--os-text-faint); }
-    .subtask-add {
-      display: flex; gap: 6px; padding: 6px 0 2px 12px;
-    }
+    .subtask-add { display: flex; gap: 6px; padding: 6px 0 2px 12px; }
     .subtask-add input {
       flex: 1; background: var(--os-bg-input); border: 1px solid var(--os-border); color: var(--os-text);
       border-radius: var(--os-radius-sm); padding: 5px 9px; font-size: 12px;
@@ -228,9 +234,7 @@
 
     /* ---- Focus view ---- */
     .focus-wrap { text-align: center; padding: 10px 0; }
-    .focus-task {
-      font-size: 20px; font-weight: 700; margin: 6px 0 4px; min-height: 28px;
-    }
+    .focus-task { font-size: 20px; font-weight: 700; margin: 6px 0 4px; min-height: 28px; }
     .focus-sub { color: var(--os-text-muted); font-size: 13px; margin-bottom: 26px; }
     .timer {
       font-size: 68px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -.02em;
@@ -244,9 +248,7 @@
       border-radius: 999px; padding: 5px 13px; font-size: 12px; font-weight: 600; cursor: pointer;
     }
     .preset.on { border-color: var(--os-red); color: var(--os-text); }
-    .focus-pick {
-      max-width: 460px; margin: 0 auto; text-align: left;
-    }
+    .focus-pick { max-width: 460px; margin: 0 auto; text-align: left; }
 
     /* ---- Shutdown view ---- */
     .shutdown-card {
@@ -278,12 +280,28 @@
       background: var(--os-bg-panel-raised); border: 1px solid var(--os-border-strong); color: var(--os-text);
       padding: 11px 18px; border-radius: 999px; font-size: 13px; font-weight: 600; opacity: 0;
       transition: opacity .2s, transform .2s; pointer-events: none; z-index: 50;
-      box-shadow: 0 8px 30px rgba(0,0,0,.5);
+      box-shadow: 0 8px 30px rgba(0,0,0,.5); max-width: 90vw; text-align: center;
     }
     .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-    .data-row { display: flex; gap: 8px; justify-content: center; margin-top: 40px; flex-wrap: wrap; }
-    .footer-note { text-align: center; color: var(--os-text-faint); font-size: 12px; margin-top: 16px; }
+    /* ---- Setup / connection ---- */
+    .setup-wrap {
+      position: fixed; inset: 0; background: var(--os-bg); z-index: 100;
+      display: flex; align-items: center; justify-content: center; padding: 24px;
+    }
+    .setup-card { width: 100%; max-width: 420px; text-align: center; }
+    .setup-card h1 { font-size: 20px; margin-bottom: 8px; }
+    .setup-card > p { color: var(--os-text-muted); font-size: 13px; margin: 0 0 8px; line-height: 1.55; }
+    .setup-label { display: block; font-size: 12px; font-weight: 600; color: var(--os-text-muted); margin: 14px 0 5px; text-align: left; }
+    .setup-input {
+      width: 100%; background: var(--os-bg-input); border: 1px solid var(--os-border-strong);
+      color: var(--os-text); border-radius: var(--os-radius-sm); padding: 10px 12px; font-size: 14px;
+    }
+    .setup-input:focus { outline: none; border-color: var(--os-red); }
+    .setup-hint { font-size: 12px; color: var(--os-text-faint); margin-top: 14px; min-height: 16px; }
+    .setup-hint.err { color: var(--os-red-hover); }
+
+    .footer-note { text-align: center; color: var(--os-text-faint); font-size: 12px; margin-top: 40px; }
     .footer-note a { color: var(--os-text-muted); }
   </style>
 </head>
@@ -297,9 +315,13 @@
           <div class="brand-sub">a calmer to-do</div>
         </div>
       </div>
-      <div class="header-date">
-        <strong id="today-label">—</strong>
-        <span id="greeting">—</span>
+      <div class="header-right">
+        <div class="sync"><span class="sync-dot syncing" id="sync-dot"></span><span id="sync-label">connecting…</span></div>
+        <button class="icon-btn" id="settings-btn" title="Connection settings">⚙</button>
+        <div class="header-date">
+          <strong id="today-label">—</strong>
+          <span id="greeting">—</span>
+        </div>
       </div>
     </header>
 
@@ -335,11 +357,11 @@
         <div id="today-list"></div>
       </section>
 
-      <!-- ================= INBOX / BRAIN DUMP ================= -->
+      <!-- ================= INBOX / BRAIN DUMP / BACKLOG ================= -->
       <section class="view" id="view-inbox">
         <div class="page-head">
-          <h1 class="page-title">Brain Dump</h1>
-          <p class="page-sub">Get it out of your head — no organizing required. Sort it later. This is your pressure-release valve.</p>
+          <h1 class="page-title">Brain Dump &amp; Backlog</h1>
+          <p class="page-sub">Capture anything, and pull a few things onto today's plan. This is the shared warehouse — same tasks as your command app.</p>
         </div>
 
         <div class="quickadd">
@@ -349,9 +371,10 @@
 
         <div class="callout">
           <span class="em">💡</span>
-          <span>Capturing a task ≠ committing to do it today. The goal here is just to stop holding it in your head. Triage when you're ready with the <strong>→ Today</strong> button.</span>
+          <span>Capturing a task ≠ committing to do it today. Use <strong>→ Today</strong> to pull just a few onto your plan. Everything here syncs with your command app.</span>
         </div>
 
+        <div class="filter-bar" id="backlog-filter"></div>
         <div id="inbox-list"></div>
       </section>
 
@@ -408,18 +431,25 @@
         </div>
       </section>
 
-      <div class="data-row">
-        <button class="btn btn-outline btn-sm" id="export-btn">⬇ Export backup</button>
-        <button class="btn btn-outline btn-sm" id="import-btn">⬆ Import backup</button>
-        <input type="file" id="import-file" accept="application/json,.json" style="display:none" />
-      </div>
-
       <p class="footer-note">
-        Everything is saved privately in this browser only. Nothing leaves your device.<br/>
-        Moving to a new phone or laptop? <strong>Export</strong> here, then <strong>Import</strong> there — that's your manual sync until real sync lands.<br/>
-        Built around how <em>your</em> brain works, not how a productivity guru's does.
+        Synced with your command app via Supabase — the same tasks, on every device.<br/>
+        Momentum only ever <em>adds</em> to a task or marks it done; removing something here just takes it off today's plan, it never deletes it from your warehouse.
       </p>
     </main>
+  </div>
+
+  <div class="setup-wrap" id="setup" style="display:none;">
+    <div class="setup-card">
+      <div class="brand-mark" style="margin:0 auto 16px;">◆</div>
+      <h1>Connect Momentum</h1>
+      <p>Momentum shows the same tasks as your command app. Paste your Supabase project URL and <strong>publishable</strong> key once — they're stored only in this browser, never sent anywhere else.</p>
+      <label class="setup-label">Supabase URL</label>
+      <input class="setup-input" id="setup-url" type="text" placeholder="https://xxxxx.supabase.co" autocomplete="off" />
+      <label class="setup-label">Publishable key</label>
+      <input class="setup-input" id="setup-key" type="text" placeholder="sb_publishable_…" autocomplete="off" />
+      <button class="btn btn-primary" id="setup-save" style="width:100%;margin-top:18px;padding:12px;">Connect</button>
+      <p class="setup-hint" id="setup-status">Tip: both values are in your command app — it's the same project.</p>
+    </div>
   </div>
 
   <div class="toast" id="toast"></div>
@@ -428,130 +458,244 @@
   (function () {
     "use strict";
 
-    // ---------- storage ----------
-    var KEY = "momentum.v1";
-    var state = load();
+    // ============ CONFIG — shared with the command app ============
+    // Connection details live only in this browser (localStorage), never in the
+    // repo. First run asks for them; they're the same project as the command app.
+    var CONF_KEY = "momentum.sbconfig";
+    var LS_TASKS = "osc-tasks-v4";       // same backup key the command app uses
+    var LS_SETTINGS = "momentum.settings";
 
-    function load() {
-      try {
-        var raw = localStorage.getItem(KEY);
-        if (raw) return JSON.parse(raw);
-      } catch (e) {}
-      return { tasks: [], settings: { pomodoro: 25 }, lastRollover: null };
+    var conf = loadConf();
+    var SB_URL = conf ? conf.url : "";
+    var SB_KEY = conf ? conf.key : "";
+
+    function loadConf() {
+      try { var r = localStorage.getItem(CONF_KEY); if (r) return JSON.parse(r); } catch (e) {}
+      return null;
     }
-    function save() {
-      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
+    function saveConf(url, key) {
+      SB_URL = url; SB_KEY = key;
+      try { localStorage.setItem(CONF_KEY, JSON.stringify({ url: url, key: key })); } catch (e) {}
     }
 
-    function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+    // category map mirrors the command app (label + work/personal type)
+    var CATEGORIES = {
+      compliance:{label:"Compliance & AHA",type:"work"},
+      training:{label:"Training & Curriculum",type:"work"},
+      bizdev:{label:"Business Development",type:"work"},
+      website:{label:"Website & Brand",type:"work"},
+      tools:{label:"Tools & Automation",type:"work"},
+      admin:{label:"Admin & Finance",type:"work"},
+      home:{label:"Home & Yard",type:"personal"},
+      family:{label:"Family",type:"personal"},
+      health:{label:"Health & Wellness",type:"personal"},
+      finances:{label:"Personal Finance",type:"personal"},
+      goals:{label:"Goals & Growth",type:"personal"},
+      personal:{label:"Personal / Other",type:"personal"}
+    };
+
+    // ============ state ============
+    // Each task IS the command app's `data` object; Momentum adds m-fields:
+    //   mBig3 (bool), mSize ('quick'|'focus'|'deep'|''), mEnergy ('low'|'med'|'high'|''),
+    //   mDay ('YYYY-MM-DD' = on today's plan), mDoneDay ('YYYY-MM-DD' when completed)
+    var tasks = [];
+    var settings = loadSettings();
+    var online = false;
+    var areaFilter = "all";
+    var backlogFilter = "all";
+    var expanded = {};   // taskId -> bool (UI: editor/subtasks open)
+
+    function loadSettings() {
+      try { var r = localStorage.getItem(LS_SETTINGS); if (r) return JSON.parse(r); } catch (e) {}
+      return { pomodoro: 25 };
+    }
+    function saveSettings() { try { localStorage.setItem(LS_SETTINGS, JSON.stringify(settings)); } catch (e) {} }
+
+    function backupLocal() { try { localStorage.setItem(LS_TASKS, JSON.stringify(tasks)); } catch (e) {} }
+
+    function uid() { return Date.now().toString() + Math.random().toString(36).slice(2, 8); }
     function todayStr() {
       var d = new Date();
       return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
     }
 
-    // ---------- model ----------
-    // task = { id, title, status: 'inbox'|'today'|'done', big3, area, size, energy,
-    //          subtasks: [{id,title,done}], day, createdAt, completedAt }
-    function addTask(title, status) {
+    // ============ Supabase (mirrors the command app's sbFetch) ============
+    function setSync(s) {
+      var dot = document.getElementById("sync-dot");
+      var lbl = document.getElementById("sync-label");
+      dot.className = "sync-dot" + (s === "ok" ? "" : s === "error" ? " error" : " syncing");
+      lbl.textContent = s === "ok" ? "synced" : s === "error" ? "offline" : "syncing…";
+    }
+    function sbFetch(path, options) {
+      options = options || {};
+      var headers = {
+        "Content-Type": "application/json",
+        "apikey": SB_KEY,
+        "Authorization": "Bearer " + SB_KEY
+      };
+      if (options.headers) for (var k in options.headers) headers[k] = options.headers[k];
+      return fetch(SB_URL + "/rest/v1/" + path, {
+        method: options.method || "GET",
+        headers: headers,
+        body: options.body
+      }).then(function (resp) {
+        if (!resp.ok) return resp.text().then(function (t) { throw new Error("SB " + resp.status + ": " + t); });
+        return resp.text().then(function (t) { return t ? JSON.parse(t) : []; });
+      });
+    }
+
+    function loadFromCloud() {
+      setSync("syncing");
+      return sbFetch("tasks?select=id,data&order=data->>createdAt.desc")
+        .then(function (rows) {
+          tasks = rows.map(function (r) {
+            var d = r.data || {};
+            if (!d.id) d.id = r.id;
+            return d;
+          });
+          online = true;
+          setSync("ok");
+          backupLocal();
+          render();
+        })
+        .catch(function (e) {
+          console.error("Cloud load:", e);
+          online = false;
+          setSync("error");
+          try {
+            var lt = localStorage.getItem(LS_TASKS);
+            if (lt) tasks = JSON.parse(lt);
+          } catch (e2) {}
+          render();
+          toast("⚠ Offline — showing local copy. Changes save when you reconnect.");
+        });
+    }
+
+    // upsert a single task (merge-duplicates) — never destructive
+    function persist(task) {
+      backupLocal();
+      if (!online) return Promise.resolve();
+      return sbFetch("tasks", {
+        method: "POST",
+        headers: { "Prefer": "resolution=merge-duplicates,return=minimal" },
+        body: JSON.stringify({ id: task.id, data: task })
+      }).catch(function (e) { console.error("persist:", e); online = false; setSync("error"); });
+    }
+
+    // ============ model helpers ============
+    function getTask(id) { return tasks.find(function (t) { return t.id === id; }); }
+    function isDone(t) { return t.done === true || t.status === "Done"; }
+    function onToday(t) { return t.mDay === todayStr(); }
+    function areaOf(t) {
+      var c = t.category && CATEGORIES[t.category];
+      return c ? c.type : "";
+    }
+    function inArea(t) {
+      if (areaFilter === "all") return true;
+      if (areaFilter === "untagged") return !areaOf(t);
+      return areaOf(t) === areaFilter;
+    }
+
+    function big3All() { return tasks.filter(function (t) { return !isDone(t) && t.mBig3 && onToday(t); }); }
+    function big3Tasks() { return big3All().filter(inArea); }
+    function quickTasks() { return tasks.filter(function (t) { return !isDone(t) && onToday(t) && !t.mBig3 && t.mSize === "quick" && inArea(t); }); }
+    function todayOther() { return tasks.filter(function (t) { return !isDone(t) && onToday(t) && !t.mBig3 && t.mSize !== "quick" && inArea(t); }); }
+    function openTodayAll() { return tasks.filter(function (t) { return !isDone(t) && onToday(t); }); }
+    function backlog() { return tasks.filter(function (t) { return !isDone(t) && !onToday(t); }); }
+    function doneToday() { return tasks.filter(function (t) { return isDone(t) && t.mDoneDay === todayStr(); }); }
+
+    // ============ mutations ============
+    function addTask(title, toToday) {
       title = (title || "").trim();
       if (!title) return null;
       var t = {
-        id: uid(), title: title, status: status || "inbox", big3: false,
-        area: "", size: "", energy: "", subtasks: [], day: todayStr(),
-        createdAt: Date.now(), completedAt: null, showEdit: false
+        id: uid(), title: title, category: "", status: "To Do", done: false,
+        note: "", dueDate: "", steps: [], priority: "", createdAt: Date.now(),
+        mBig3: false, mSize: "", mEnergy: "", mDay: toToday ? todayStr() : null, mDoneDay: null
       };
-      state.tasks.unshift(t);
-      save();
+      tasks.unshift(t);
+      persist(t);
       return t;
     }
-    function getTask(id) { return state.tasks.find(function (t) { return t.id === id; }); }
-    function removeTask(id) { state.tasks = state.tasks.filter(function (t) { return t.id !== id; }); save(); }
-
-    var areaFilter = "all";
-    function inArea(t) { return areaFilter === "all" || t.area === areaFilter || (areaFilter === "untagged" && !t.area); }
-
-    function big3All() { return state.tasks.filter(function (t) { return t.status !== "done" && t.big3; }); }
-    function big3Tasks() { return state.tasks.filter(function (t) { return t.status !== "done" && t.big3 && inArea(t); }); }
-    function quickTasks() { return state.tasks.filter(function (t) { return t.status === "today" && !t.big3 && t.size === "quick" && inArea(t); }); }
-    function todayTasks() { return state.tasks.filter(function (t) { return t.status === "today" && !t.big3 && t.size !== "quick" && inArea(t); }); }
-    function inboxTasks() { return state.tasks.filter(function (t) { return t.status === "inbox"; }); }
-    function doneToday() { return state.tasks.filter(function (t) { return t.status === "done" && t.day === todayStr(); }); }
-    function openTodayAll() { return state.tasks.filter(function (t) { return (t.status === "today" || t.big3) && t.status !== "done"; }); }
-
-    // ---------- rollover: undone "today" items from previous days become inbox again (guilt-free) ----------
-    function rollover() {
-      var today = todayStr();
-      if (state.lastRollover === today) return;
-      state.tasks.forEach(function (t) {
-        if (t.status === "today" && t.day !== today) {
-          t.status = "inbox"; t.big3 = false; // gently return to the dump, not screaming "OVERDUE"
-        }
-      });
-      state.lastRollover = today;
-      save();
+    function setDone(t, done) {
+      t.done = done;
+      t.status = done ? "Done" : "To Do";
+      t.mDoneDay = done ? todayStr() : null;
+      if (done) t.mBig3 = false;
+      persist(t);
     }
 
-    // ---------- toast ----------
+    // ============ toast ============
     var toastEl = document.getElementById("toast");
     var toastTimer = null;
     function toast(msg) {
       toastEl.textContent = msg;
       toastEl.classList.add("show");
       clearTimeout(toastTimer);
-      toastTimer = setTimeout(function () { toastEl.classList.remove("show"); }, 1900);
+      toastTimer = setTimeout(function () { toastEl.classList.remove("show"); }, 2100);
     }
 
-    // ---------- rendering ----------
-    var AREAS = ["work", "personal", "health"];
+    // ============ rendering ============
     var SIZES = [["quick", "Quick <15m"], ["focus", "Focus 30–90m"], ["deep", "Deep work"]];
     var ENERGIES = [["low", "Low energy"], ["med", "Med energy"], ["high", "High energy"]];
 
     function esc(s) {
-      return String(s).replace(/[&<>"']/g, function (c) {
+      return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
         return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
       });
     }
-
     function chip(label, cls) { return '<span class="chip ' + cls + '">' + esc(label) + "</span>"; }
 
-    function taskCard(t, opts) {
-      opts = opts || {};
-      var checked = t.status === "done" ? "checked" : "";
-      var classes = "task" + (t.status === "done" ? " done" : "") + (t.big3 ? " big3" : "");
+    function dueChip(t) {
+      if (!t.dueDate) return "";
+      var label = t.dueDate;
+      var d = new Date(t.dueDate);
+      if (!isNaN(d.getTime())) label = d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+      return chip("⏱ " + label, "chip-due");
+    }
+
+    function taskCard(t, ctx) {
+      ctx = ctx || {};
+      var done = isDone(t);
+      var classes = "task" + (done ? " done" : "") + (t.mBig3 && onToday(t) ? " big3" : "");
       var meta = "";
-      if (t.area) meta += chip(t.area, "chip-area");
-      if (t.size) { var sz = SIZES.find(function (s) { return s[0] === t.size; }); meta += chip(sz ? sz[1] : t.size, "chip-" + t.size); }
-      if (t.energy) { var en = ENERGIES.find(function (e) { return e[0] === t.energy; }); meta += chip(en ? en[1] : t.energy, "chip-" + t.energy); }
-      var doneCount = t.subtasks.filter(function (s) { return s.done; }).length;
-      if (t.subtasks.length) meta += chip(doneCount + "/" + t.subtasks.length + " steps", "chip-plain");
+      var cat = t.category && CATEGORIES[t.category];
+      if (cat) meta += chip(cat.label, "chip-" + cat.type);
+      else if (t.category) meta += chip(t.category, "chip-cat");
+      if (t.mSize) { var sz = SIZES.find(function (s) { return s[0] === t.mSize; }); meta += chip(sz ? sz[1] : t.mSize, "chip-" + t.mSize); }
+      if (t.mEnergy) { var en = ENERGIES.find(function (e) { return e[0] === t.mEnergy; }); meta += chip(en ? en[1] : t.mEnergy, "chip-" + t.mEnergy); }
+      meta += dueChip(t);
+      var steps = t.steps || [];
+      var doneCount = steps.filter(function (s) { return s.done; }).length;
+      if (steps.length) meta += chip(doneCount + "/" + steps.length + " steps", "chip-plain");
 
-      var starOn = t.big3 ? "on" : "";
-      var star = t.status === "done" ? "" :
+      var isExp = !!expanded[t.id];
+      var starOn = (t.mBig3 && onToday(t)) ? "on" : "";
+      var star = done ? "" :
         '<button class="icon-btn star ' + starOn + '" data-act="star" data-id="' + t.id + '" title="Toggle Big 3">★</button>';
-
-      var toTodayBtn = (t.status === "inbox")
-        ? '<button class="icon-btn" data-act="totoday" data-id="' + t.id + '" title="Move to Today">→</button>' : "";
-
+      var pullBtn = (!done && !onToday(t))
+        ? '<button class="icon-btn" data-act="totoday" data-id="' + t.id + '" title="Pull onto today">→</button>' : "";
       var editBtn = '<button class="icon-btn" data-act="edit" data-id="' + t.id + '" title="Tags & steps">⋯</button>';
-      var delBtn = '<button class="icon-btn" data-act="del" data-id="' + t.id + '" title="Delete">✕</button>';
+      // remove = take off today's plan (non-destructive). Only shown for tasks on today.
+      var removeBtn = (onToday(t) && !done)
+        ? '<button class="icon-btn" data-act="remove" data-id="' + t.id + '" title="Take off today (keeps the task)">✕</button>' : "";
 
       var html = '<div class="' + classes + '" data-id="' + t.id + '">';
-      html += '<div class="check ' + checked + '" data-act="check" data-id="' + t.id + '"></div>';
+      html += '<div class="check ' + (done ? "checked" : "") + '" data-act="check" data-id="' + t.id + '"></div>';
       html += '<div class="task-body">';
       html += '<div class="task-title">' + esc(t.title) + "</div>";
       if (meta) html += '<div class="task-meta">' + meta + "</div>";
 
-      // subtasks
-      if (t.subtasks.length || t.showEdit) {
+      if (steps.length || isExp) {
         html += '<div class="subtasks">';
-        t.subtasks.forEach(function (s) {
+        steps.forEach(function (s, i) {
           html += '<div class="subtask">'
-            + '<div class="mini-check ' + (s.done ? "checked" : "") + '" data-act="subcheck" data-id="' + t.id + '" data-sid="' + s.id + '"></div>'
-            + '<span class="' + (s.done ? "done" : "") + '">' + esc(s.title) + "</span>"
-            + '<button class="icon-btn" data-act="subdel" data-id="' + t.id + '" data-sid="' + s.id + '" style="margin-left:auto;font-size:12px;">✕</button>'
+            + '<div class="mini-check ' + (s.done ? "checked" : "") + '" data-act="subcheck" data-id="' + t.id + '" data-sidx="' + i + '"></div>'
+            + '<span class="' + (s.done ? "done" : "") + '">' + esc(s.text) + "</span>"
+            + '<button class="icon-btn" data-act="subdel" data-id="' + t.id + '" data-sidx="' + i + '" style="margin-left:auto;font-size:12px;">✕</button>'
             + "</div>";
         });
-        if (t.showEdit) {
+        if (isExp) {
           html += '<div class="subtask-add">'
             + '<input type="text" placeholder="Break it down — next tiny step…" data-subadd="' + t.id + '"/>'
             + '<button class="btn btn-outline btn-sm" data-act="subadd" data-id="' + t.id + '">+ step</button>'
@@ -560,57 +704,48 @@
         html += "</div>";
       }
 
-      // inline editor
-      if (t.showEdit) {
+      if (isExp) {
         html += '<div class="edit-row">';
-        html += '<div class="edit-group"><span class="edit-label">Area</span><div class="seg">';
-        AREAS.forEach(function (a) {
-          html += '<button class="' + (t.area === a ? "on" : "") + '" data-act="set" data-field="area" data-val="' + a + '" data-id="' + t.id + '">' + a + "</button>";
-        });
-        html += "</div></div>";
         html += '<div class="edit-group"><span class="edit-label">Size</span><div class="seg">';
         SIZES.forEach(function (s) {
-          html += '<button class="' + (t.size === s[0] ? "on" : "") + '" data-act="set" data-field="size" data-val="' + s[0] + '" data-id="' + t.id + '">' + s[0] + "</button>";
+          html += '<button class="' + (t.mSize === s[0] ? "on" : "") + '" data-act="set" data-field="mSize" data-val="' + s[0] + '" data-id="' + t.id + '">' + s[0] + "</button>";
         });
         html += "</div></div>";
         html += '<div class="edit-group"><span class="edit-label">Energy</span><div class="seg">';
         ENERGIES.forEach(function (e) {
-          html += '<button class="' + (t.energy === e[0] ? "on" : "") + '" data-act="set" data-field="energy" data-val="' + e[0] + '" data-id="' + t.id + '">' + e[0] + "</button>";
+          html += '<button class="' + (t.mEnergy === e[0] ? "on" : "") + '" data-act="set" data-field="mEnergy" data-val="' + e[0] + '" data-id="' + t.id + '">' + e[0] + "</button>";
         });
         html += "</div></div>";
         html += "</div>";
       }
 
       html += "</div>"; // body
-      html += '<div class="task-actions">' + star + toTodayBtn + editBtn + delBtn + "</div>";
+      html += '<div class="task-actions">' + star + pullBtn + editBtn + removeBtn + "</div>";
       html += "</div>";
       return html;
     }
 
-    function renderAreaFilter() {
-      var el = document.getElementById("area-filter");
-      var open = openTodayAll();
-      var hasUntagged = open.some(function (t) { return !t.area; });
-      var opts = [["all", "All"]];
-      AREAS.forEach(function (a) { opts.push([a, a]); });
+    function renderAreaFilter(elId, current, source) {
+      var el = document.getElementById(elId);
+      var open = source();
+      var hasUntagged = open.some(function (t) { return !areaOf(t); });
+      var opts = [["all", "All"], ["work", "work"], ["personal", "personal"]];
       if (hasUntagged) opts.push(["untagged", "untagged"]);
       el.innerHTML = '<span class="flabel">View</span>' + opts.map(function (o) {
         var n = o[0] === "all" ? open.length
-          : o[0] === "untagged" ? open.filter(function (t) { return !t.area; }).length
-          : open.filter(function (t) { return t.area === o[0]; }).length;
-        return '<button class="fbtn ' + (areaFilter === o[0] ? "on" : "") + '" data-act="areafilter" data-area="' + o[0] + '">'
+          : o[0] === "untagged" ? open.filter(function (t) { return !areaOf(t); }).length
+          : open.filter(function (t) { return areaOf(t) === o[0]; }).length;
+        return '<button class="fbtn ' + (current === o[0] ? "on" : "") + '" data-act="' + (elId === "area-filter" ? "areafilter" : "backlogfilter") + '" data-area="' + o[0] + '">'
           + o[1] + ' <span style="opacity:.6">' + n + '</span></button>';
       }).join("");
     }
 
     function render() {
-      rollover();
-
       // counts
       document.getElementById("count-today").textContent = openTodayAll().length;
-      document.getElementById("count-inbox").textContent = inboxTasks().length;
+      document.getElementById("count-inbox").textContent = backlog().length;
 
-      // header date + greeting
+      // header
       var d = new Date();
       document.getElementById("today-label").textContent =
         d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
@@ -618,12 +753,10 @@
       var greet = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
       document.getElementById("greeting").textContent = greet + ", let's go gently.";
 
-      // area filter bar
-      renderAreaFilter();
+      // ---- TODAY ----
+      renderAreaFilter("area-filter", areaFilter, openTodayAll);
 
-      // Big 3
       var b3 = big3Tasks();
-      var b3el = document.getElementById("big3-list");
       var b3html = b3.map(function (t) { return taskCard(t); }).join("");
       if (areaFilter === "all") {
         var slotsLeft = 3 - big3All().length;
@@ -633,33 +766,35 @@
       } else if (!b3.length) {
         b3html = '<div class="big3-empty">No Big 3 in this area. Your Big 3 is one shared set of 3 for the whole day — switch to All to see it.</div>';
       }
-      b3el.innerHTML = b3html;
+      document.getElementById("big3-list").innerHTML = b3html;
 
-      // Small & quick batch
       var qk = quickTasks();
       document.getElementById("quick-list").innerHTML = qk.length
         ? qk.map(function (t) { return taskCard(t); }).join("")
         : '<div class="empty-state">No little tasks batched. Tag a task <strong>quick</strong> (via ⋯) to park it here.</div>';
 
-      // Also today
-      var tl = todayTasks();
+      var tl = todayOther();
       document.getElementById("today-list").innerHTML = tl.length
         ? tl.map(function (t) { return taskCard(t); }).join("")
         : '<div class="empty-state">Nothing else queued. That\'s allowed. A short list is a kind list.</div>';
 
-      // Inbox
-      var ib = inboxTasks();
-      document.getElementById("inbox-list").innerHTML = ib.length
-        ? ib.map(function (t) { return taskCard(t); }).join("")
-        : '<div class="empty-state"><div class="big">🧠</div>Head\'s clear. Nothing waiting to be sorted.</div>';
+      // ---- BRAIN DUMP / BACKLOG ----
+      renderAreaFilter("backlog-filter", backlogFilter, backlog);
+      var bl = backlog().filter(function (t) {
+        if (backlogFilter === "all") return true;
+        if (backlogFilter === "untagged") return !areaOf(t);
+        return areaOf(t) === backlogFilter;
+      });
+      document.getElementById("inbox-list").innerHTML = bl.length
+        ? bl.map(function (t) { return taskCard(t); }).join("")
+        : '<div class="empty-state"><div class="big">🧠</div>Nothing waiting here. Head\'s clear.</div>';
 
       renderFocus();
       renderShutdown();
-      save();
     }
 
-    // ---------- Focus ----------
-    var focus = { taskId: null, secondsLeft: 25 * 60, total: 25 * 60, running: false, tick: null, minutes: 25 };
+    // ============ Focus ============
+    var focus = { taskId: null, secondsLeft: 25 * 60, running: false, tick: null, minutes: settings.pomodoro || 25 };
     var PRESETS = [10, 15, 25, 45];
 
     function renderFocus() {
@@ -671,15 +806,15 @@
         active.style.display = "none";
         picker.style.display = "block";
         if (!candidates.length) {
-          picker.innerHTML = '<div class="empty-state"><div class="big">🎯</div>No open tasks yet. Add a couple on the Today tab, then come back and pick one to focus on.</div>';
+          picker.innerHTML = '<div class="empty-state"><div class="big">🎯</div>No open tasks on today\'s plan yet. Pull a couple onto Today, then come back and pick one.</div>';
           return;
         }
         var html = '<div class="section-label">Pick one thing to focus on</div>';
         html += candidates.map(function (t) {
-          var sz = t.size ? SIZES.find(function (s) { return s[0] === t.size; }) : null;
+          var sz = t.mSize ? SIZES.find(function (s) { return s[0] === t.mSize; }) : null;
           return '<div class="task" style="cursor:pointer" data-act="focuspick" data-id="' + t.id + '">'
-            + '<div class="task-body"><div class="task-title">' + (t.big3 ? "★ " : "") + esc(t.title) + "</div>"
-            + (sz ? '<div class="task-meta">' + chip(sz[1], "chip-" + t.size) + "</div>" : "")
+            + '<div class="task-body"><div class="task-title">' + (t.mBig3 ? "★ " : "") + esc(t.title) + "</div>"
+            + (sz ? '<div class="task-meta">' + chip(sz[1], "chip-" + t.mSize) + "</div>" : "")
             + "</div>"
             + '<div class="task-actions"><span class="btn btn-outline btn-sm">Focus →</span></div>'
             + "</div>";
@@ -689,16 +824,15 @@
       }
 
       var t = getTask(focus.taskId);
-      if (!t || t.status === "done") { focus.taskId = null; stopTimer(); renderFocus(); return; }
+      if (!t || isDone(t)) { focus.taskId = null; stopTimer(); renderFocus(); return; }
       picker.style.display = "none";
       active.style.display = "block";
-      document.getElementById("focus-task-title").textContent = (t.big3 ? "★ " : "") + t.title;
-      var nextStep = t.subtasks.find(function (s) { return !s.done; });
+      document.getElementById("focus-task-title").textContent = (t.mBig3 ? "★ " : "") + t.title;
+      var nextStep = (t.steps || []).find(function (s) { return !s.done; });
       document.getElementById("focus-next-step").textContent = nextStep
-        ? "Next tiny step: " + nextStep.title
+        ? "Next tiny step: " + nextStep.text
         : "Tip: what's the very next physical action? Just start there.";
 
-      // presets
       document.getElementById("preset-row").innerHTML = PRESETS.map(function (m) {
         return '<button class="preset ' + (focus.minutes === m ? "on" : "") + '" data-act="preset" data-min="' + m + '">' + m + "m</button>";
       }).join("");
@@ -709,8 +843,7 @@
     }
 
     function updateTimerDisplay() {
-      var m = Math.floor(focus.secondsLeft / 60);
-      var s = focus.secondsLeft % 60;
+      var m = Math.floor(focus.secondsLeft / 60), s = focus.secondsLeft % 60;
       document.getElementById("timer").textContent = String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
     }
     function startTimer() {
@@ -719,9 +852,7 @@
       focus.tick = setInterval(function () {
         focus.secondsLeft--;
         if (focus.secondsLeft <= 0) {
-          stopTimer();
-          focus.secondsLeft = 0;
-          updateTimerDisplay();
+          stopTimer(); focus.secondsLeft = 0; updateTimerDisplay();
           toast("⏰ Time's up — great work. Take a real break.");
           try { beep(); } catch (e) {}
           return;
@@ -733,15 +864,12 @@
     function stopTimer() {
       focus.running = false;
       if (focus.tick) { clearInterval(focus.tick); focus.tick = null; }
-      var el = document.getElementById("timer");
-      if (el) el.classList.remove("running");
-      var btn = document.getElementById("timer-start");
-      if (btn) btn.textContent = "Start";
+      var el = document.getElementById("timer"); if (el) el.classList.remove("running");
+      var btn = document.getElementById("timer-start"); if (btn) btn.textContent = "Start";
     }
     function resetTimer() {
       stopTimer();
       focus.secondsLeft = focus.minutes * 60;
-      focus.total = focus.secondsLeft;
       updateTimerDisplay();
     }
     function beep() {
@@ -752,19 +880,17 @@
       o.start(); setTimeout(function () { o.stop(); ctx.close(); }, 350);
     }
 
-    // ---------- Shutdown ----------
+    // ============ Shutdown ============
     function renderShutdown() {
       var wins = doneToday();
-      var winsEl = document.getElementById("wins-list");
-      winsEl.innerHTML = wins.length
+      document.getElementById("wins-list").innerHTML = wins.length
         ? wins.map(function (t) { return '<div class="win-item"><span class="dot">●</span><span>' + esc(t.title) + "</span></div>"; }).join("")
         : '<div class="roll-item">Nothing checked off yet — and that\'s okay. Showing up is its own task.</div>';
 
       var roll = openTodayAll();
-      var rollEl = document.getElementById("roll-list");
-      rollEl.innerHTML = roll.length
-        ? roll.map(function (t) { return '<div class="roll-item"><span>○</span><span>' + (t.big3 ? "★ " : "") + esc(t.title) + "</span></div>"; }).join("")
-        : '<div class="win-item"><span class="dot">●</span><span>Nothing left open. Fully clear. Go rest.</span></div>';
+      document.getElementById("roll-list").innerHTML = roll.length
+        ? roll.map(function (t) { return '<div class="roll-item"><span>○</span><span>' + (t.mBig3 ? "★ " : "") + esc(t.title) + "</span></div>"; }).join("")
+        : '<div class="win-item"><span class="dot">●</span><span>Nothing left open on today\'s plan. Fully clear. Go rest.</span></div>';
 
       var restTitle = document.getElementById("rest-title");
       var restMsg = document.getElementById("rest-msg");
@@ -777,7 +903,7 @@
       }
     }
 
-    // ---------- events ----------
+    // ============ events ============
     function switchView(name) {
       document.querySelectorAll(".tab").forEach(function (b) { b.classList.toggle("active", b.dataset.view === name); });
       document.querySelectorAll(".view").forEach(function (v) { v.classList.toggle("active", v.id === "view-" + name); });
@@ -788,21 +914,19 @@
       b.addEventListener("click", function () { switchView(b.dataset.view); });
     });
 
-    // quick add
-    function wireAdd(inputId, btnId, status, msg) {
+    function wireAdd(inputId, btnId, toToday, msg) {
       var input = document.getElementById(inputId);
       var btn = document.getElementById(btnId);
       function go() {
-        var t = addTask(input.value, status);
+        var t = addTask(input.value, toToday);
         if (t) { input.value = ""; render(); toast(msg); }
       }
       btn.addEventListener("click", go);
       input.addEventListener("keydown", function (e) { if (e.key === "Enter") go(); });
     }
-    wireAdd("today-add", "today-add-btn", "today", "Added to today");
-    wireAdd("inbox-add", "inbox-add-btn", "inbox", "Out of your head ✓");
+    wireAdd("today-add", "today-add-btn", true, "Added to today");
+    wireAdd("inbox-add", "inbox-add-btn", false, "Out of your head ✓");
 
-    // delegated clicks
     document.querySelector("main").addEventListener("click", function (e) {
       var el = e.target.closest("[data-act]");
       if (!el) return;
@@ -811,113 +935,71 @@
       var t = id ? getTask(id) : null;
 
       if (act === "check" && t) {
-        if (t.status === "done") { t.status = t.big3 ? "today" : "today"; t.completedAt = null; }
-        else { t.status = "done"; t.completedAt = Date.now(); t.day = todayStr(); toast(pickPraise()); }
-        save(); render();
+        setDone(t, !isDone(t));
+        if (isDone(t)) toast(pickPraise());
+        render();
       } else if (act === "areafilter") {
-        areaFilter = el.dataset.area; render(); return;
+        areaFilter = el.dataset.area; render();
+      } else if (act === "backlogfilter") {
+        backlogFilter = el.dataset.area; render();
       } else if (act === "star" && t) {
-        if (!t.big3 && big3All().length >= 3) { toast("Big 3 is full — that's the point. Finish or swap one first."); return; }
-        t.big3 = !t.big3;
-        if (t.big3 && t.status === "inbox") t.status = "today";
-        save(); render();
+        if (!t.mBig3 && big3All().length >= 3) { toast("Big 3 is full — that's the point. Finish or swap one first."); return; }
+        t.mBig3 = !t.mBig3;
+        if (t.mBig3) t.mDay = todayStr();   // starring pulls it onto today
+        persist(t); render();
       } else if (act === "totoday" && t) {
-        t.status = "today"; t.day = todayStr(); save(); render(); toast("Moved to today");
+        t.mDay = todayStr(); persist(t); render(); toast("Pulled onto today");
+      } else if (act === "remove" && t) {
+        t.mDay = null; t.mBig3 = false; persist(t); render(); toast("Off today's plan — still in your backlog");
       } else if (act === "edit" && t) {
-        t.showEdit = !t.showEdit; save(); render();
-      } else if (act === "del" && t) {
-        removeTask(id); render();
+        expanded[id] = !expanded[id]; render();
       } else if (act === "set" && t) {
         var f = el.dataset.field, v = el.dataset.val;
-        t[f] = (t[f] === v) ? "" : v; save(); render();
+        t[f] = (t[f] === v) ? "" : v; persist(t); render();
       } else if (act === "subcheck" && t) {
-        var s = t.subtasks.find(function (x) { return x.id === el.dataset.sid; });
-        if (s) { s.done = !s.done; save(); render(); }
+        var s = (t.steps || [])[+el.dataset.sidx]; if (s) { s.done = !s.done; persist(t); render(); }
       } else if (act === "subdel" && t) {
-        t.subtasks = t.subtasks.filter(function (x) { return x.id !== el.dataset.sid; }); save(); render();
+        t.steps.splice(+el.dataset.sidx, 1); reindexSteps(t); persist(t); render();
       } else if (act === "subadd" && t) {
         var inp = document.querySelector('[data-subadd="' + id + '"]');
-        if (inp && inp.value.trim()) { t.subtasks.push({ id: uid(), title: inp.value.trim(), done: false }); save(); render(); }
+        if (inp && inp.value.trim()) { addStep(t, inp.value.trim()); persist(t); render(); }
       } else if (act === "focuspick" && t) {
         focus.taskId = id; resetTimer(); renderFocus();
       } else if (act === "preset") {
-        focus.minutes = parseInt(el.dataset.min, 10); resetTimer(); renderFocus();
+        focus.minutes = parseInt(el.dataset.min, 10); settings.pomodoro = focus.minutes; saveSettings(); resetTimer(); renderFocus();
       }
     });
 
-    // subtask enter key
+    function addStep(t, text) {
+      if (!t.steps) t.steps = [];
+      t.steps.push({ id: t.steps.length.toString(), text: text, done: false });
+    }
+    function reindexSteps(t) { (t.steps || []).forEach(function (s, i) { s.id = i.toString(); }); }
+
     document.querySelector("main").addEventListener("keydown", function (e) {
       if (e.key !== "Enter") return;
       var inp = e.target.closest("[data-subadd]");
       if (inp) {
         var id = inp.getAttribute("data-subadd");
         var t = getTask(id);
-        if (t && inp.value.trim()) { t.subtasks.push({ id: uid(), title: inp.value.trim(), done: false }); save(); render(); }
+        if (t && inp.value.trim()) { addStep(t, inp.value.trim()); persist(t); render(); }
       }
     });
 
-    // focus controls
     document.getElementById("timer-start").addEventListener("click", startTimer);
     document.getElementById("timer-reset").addEventListener("click", function () { resetTimer(); renderFocus(); });
     document.getElementById("focus-change").addEventListener("click", function () { stopTimer(); focus.taskId = null; renderFocus(); });
     document.getElementById("focus-done").addEventListener("click", function () {
       var t = getTask(focus.taskId);
-      if (t) { t.status = "done"; t.completedAt = Date.now(); t.day = todayStr(); stopTimer(); focus.taskId = null; toast(pickPraise()); render(); switchView("focus"); }
+      if (t) { setDone(t, true); stopTimer(); focus.taskId = null; toast(pickPraise()); render(); switchView("focus"); }
     });
 
-    // close the day
     document.getElementById("close-day").addEventListener("click", function () {
-      openTodayAll().forEach(function (t) { t.status = "inbox"; t.big3 = false; });
-      state.lastRollover = todayStr();
-      save(); render();
+      var open = openTodayAll();
+      open.forEach(function (t) { t.mDay = null; t.mBig3 = false; persist(t); });
+      render();
       toast("Day closed. Go rest — you've earned nothing less. 🌙");
       switchView("today");
-    });
-
-    // ---------- Export / Import (manual sync) ----------
-    function exportBackup() {
-      var payload = JSON.stringify(state, null, 2);
-      var blob = new Blob([payload], { type: "application/json" });
-      var url = URL.createObjectURL(blob);
-      var a = document.createElement("a");
-      a.href = url;
-      a.download = "momentum-backup-" + todayStr() + ".json";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
-      toast("Backup downloaded ✓");
-    }
-
-    function importBackup(file) {
-      var reader = new FileReader();
-      reader.onload = function (e) {
-        var data;
-        try { data = JSON.parse(e.target.result); } catch (err) { toast("That file isn't a valid Momentum backup."); return; }
-        if (!data || !Array.isArray(data.tasks)) { toast("That file isn't a valid Momentum backup."); return; }
-        var count = data.tasks.length;
-        if (!confirm("Import " + count + " task" + (count === 1 ? "" : "s") + "? This replaces what's currently in this browser.")) return;
-        state = {
-          tasks: data.tasks,
-          settings: data.settings || { pomodoro: 25 },
-          lastRollover: data.lastRollover || null,
-          seeded: true
-        };
-        save();
-        stopTimer();
-        focus.taskId = null;
-        areaFilter = "all";
-        render();
-        toast("Imported ✓ — welcome back.");
-      };
-      reader.readAsText(file);
-    }
-
-    document.getElementById("export-btn").addEventListener("click", exportBackup);
-    document.getElementById("import-btn").addEventListener("click", function () { document.getElementById("import-file").click(); });
-    document.getElementById("import-file").addEventListener("change", function (e) {
-      if (e.target.files && e.target.files[0]) importBackup(e.target.files[0]);
-      e.target.value = "";
     });
 
     function pickPraise() {
@@ -926,15 +1008,34 @@
       return p[Math.floor(Math.random() * p.length)];
     }
 
-    // seed a friendly first-run example
-    if (state.tasks.length === 0 && !state.seeded) {
-      state.seeded = true;
-      var demo = addTask("Try me: tap the ★ to make me a Big 3, or ⋯ to tag me", "today");
-      addTask("Brain dump anything on your mind here — no pressure to act on it", "inbox");
-      save();
+    // ============ setup / connection screen ============
+    function showSetup() {
+      var el = document.getElementById("setup");
+      document.getElementById("setup-url").value = SB_URL || "";
+      document.getElementById("setup-key").value = SB_KEY || "";
+      el.style.display = "flex";
     }
+    function hideSetup() { document.getElementById("setup").style.display = "none"; }
 
+    document.getElementById("settings-btn").addEventListener("click", showSetup);
+    document.getElementById("setup-save").addEventListener("click", function () {
+      var url = document.getElementById("setup-url").value.trim().replace(/\/+$/, "");
+      var key = document.getElementById("setup-key").value.trim();
+      var status = document.getElementById("setup-status");
+      if (!/^https:\/\/.+\.supabase\.co$/.test(url)) { status.className = "setup-hint err"; status.textContent = "That doesn't look like a Supabase URL (https://xxxx.supabase.co)."; return; }
+      if (!key) { status.className = "setup-hint err"; status.textContent = "Paste your publishable key."; return; }
+      saveConf(url, key);
+      hideSetup();
+      loadFromCloud();
+    });
+
+    // refresh from cloud on focus + gently on an interval, so command-app / other-device changes appear
+    window.addEventListener("focus", function () { if (SB_KEY && !focus.running) loadFromCloud(); });
+    setInterval(function () { if (SB_KEY && document.visibilityState === "visible" && !focus.running) loadFromCloud(); }, 60000);
+
+    // initial paint, then either connect or ask for connection details
     render();
+    if (SB_KEY) { loadFromCloud(); } else { setSync("error"); showSetup(); }
   })();
   </script>
 </body>
