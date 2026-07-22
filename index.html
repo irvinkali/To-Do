@@ -282,7 +282,8 @@
     }
     .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-    .footer-note { text-align: center; color: var(--os-text-faint); font-size: 12px; margin-top: 40px; }
+    .data-row { display: flex; gap: 8px; justify-content: center; margin-top: 40px; flex-wrap: wrap; }
+    .footer-note { text-align: center; color: var(--os-text-faint); font-size: 12px; margin-top: 16px; }
     .footer-note a { color: var(--os-text-muted); }
   </style>
 </head>
@@ -407,8 +408,15 @@
         </div>
       </section>
 
+      <div class="data-row">
+        <button class="btn btn-outline btn-sm" id="export-btn">⬇ Export backup</button>
+        <button class="btn btn-outline btn-sm" id="import-btn">⬆ Import backup</button>
+        <input type="file" id="import-file" accept="application/json,.json" style="display:none" />
+      </div>
+
       <p class="footer-note">
         Everything is saved privately in this browser only. Nothing leaves your device.<br/>
+        Moving to a new phone or laptop? <strong>Export</strong> here, then <strong>Import</strong> there — that's your manual sync until real sync lands.<br/>
         Built around how <em>your</em> brain works, not how a productivity guru's does.
       </p>
     </main>
@@ -864,6 +872,52 @@
       save(); render();
       toast("Day closed. Go rest — you've earned nothing less. 🌙");
       switchView("today");
+    });
+
+    // ---------- Export / Import (manual sync) ----------
+    function exportBackup() {
+      var payload = JSON.stringify(state, null, 2);
+      var blob = new Blob([payload], { type: "application/json" });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = url;
+      a.download = "momentum-backup-" + todayStr() + ".json";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+      toast("Backup downloaded ✓");
+    }
+
+    function importBackup(file) {
+      var reader = new FileReader();
+      reader.onload = function (e) {
+        var data;
+        try { data = JSON.parse(e.target.result); } catch (err) { toast("That file isn't a valid Momentum backup."); return; }
+        if (!data || !Array.isArray(data.tasks)) { toast("That file isn't a valid Momentum backup."); return; }
+        var count = data.tasks.length;
+        if (!confirm("Import " + count + " task" + (count === 1 ? "" : "s") + "? This replaces what's currently in this browser.")) return;
+        state = {
+          tasks: data.tasks,
+          settings: data.settings || { pomodoro: 25 },
+          lastRollover: data.lastRollover || null,
+          seeded: true
+        };
+        save();
+        stopTimer();
+        focus.taskId = null;
+        areaFilter = "all";
+        render();
+        toast("Imported ✓ — welcome back.");
+      };
+      reader.readAsText(file);
+    }
+
+    document.getElementById("export-btn").addEventListener("click", exportBackup);
+    document.getElementById("import-btn").addEventListener("click", function () { document.getElementById("import-file").click(); });
+    document.getElementById("import-file").addEventListener("change", function (e) {
+      if (e.target.files && e.target.files[0]) importBackup(e.target.files[0]);
+      e.target.value = "";
     });
 
     function pickPraise() {

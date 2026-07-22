@@ -158,10 +158,11 @@ No build step. Options:
   card to the `TOOLS` array in the portal's `dashboard.html`. It already uses the
   same brand tokens, so it'll match.
 
-> Note: because storage is per-browser, your tasks won't sync between your phone
-> and laptop yet. If you want that, the natural next step is a small sync layer
-> (or wiring the day's time-blocks straight into your Google Calendar — ask and
-> that can be built).
+> Note: because storage is per-browser, your tasks won't auto-sync between your
+> phone and laptop yet. For now there's **manual sync**: the **Export backup** /
+> **Import backup** buttons at the bottom download your whole list as a JSON file
+> and load it on another device. Real automatic sync is the next build (a small
+> sync layer behind the Optimum portal login).
 
 ---
 
