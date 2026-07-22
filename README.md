@@ -46,6 +46,24 @@ else lives under "Also today" as a genuine bonus, not a debt.
 > Grounded in: the "1–3 MITs / Most Important Tasks" method and Ivy Lee's
 > six-task rule, trimmed to three for ADHD load.
 
+**One Big 3 for the whole day — not one per context.** It's tempting to run a
+Work-3 *and* a Personal-3, but that's six must-dos, and you've quietly rebuilt
+the overwhelm the system exists to prevent. Your worth is protected by keeping
+the "made today matter" number small and *singular*. So the Big 3 is one shared
+set of three; tag each one Work or Personal if you like, and use the **area
+filter** at the top of Today to look at just work when you're in work mode.
+
+**Small work tasks live in their own lane — and never count against you.** Work
+throws off a pile of little things that just have to happen, usually more than
+three. Those are *maintenance*, not the day's *meaning*, so mixing them into the
+Big 3 is exactly what makes the list feel crushing. Tag a task **quick** and it
+drops into the **Small & quick** batch — uncapped, meant to be swept in one
+low-energy pass. Checking them off gives you the dopamine wins; *not* finishing
+them is never failure, because they were never your win-condition. This is the
+core mechanic that lets a low-output day still feel worthy: the thing that
+measures your day (the Big 3) stays small and reachable, while the busywork
+stays visibly *bonus.*
+
 ### 3. Tag by energy and size, not just priority
 For ADHD + depression, the real constraint usually isn't time or importance —
 it's **available energy and executive bandwidth right now.** So each task can be

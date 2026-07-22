@@ -106,6 +106,15 @@
     }
     .quickadd input:focus { outline: none; border-color: var(--os-red); }
 
+    /* ---- Area filter ---- */
+    .filter-bar { display: flex; gap: 6px; margin-bottom: 18px; flex-wrap: wrap; align-items: center; }
+    .filter-bar .flabel { font-size: 11px; color: var(--os-text-faint); text-transform: uppercase; letter-spacing: .05em; margin-right: 2px; }
+    .fbtn {
+      background: var(--os-bg-input); border: 1px solid var(--os-border); color: var(--os-text-muted);
+      border-radius: 999px; padding: 5px 13px; font-size: 12px; font-weight: 600; cursor: pointer; text-transform: capitalize;
+    }
+    .fbtn.on { border-color: var(--os-red); color: var(--os-text); background: var(--os-red-dim); }
+
     .btn {
       display: inline-flex; align-items: center; justify-content: center; gap: 7px;
       border-radius: var(--os-radius-sm); padding: 10px 15px; font-size: 14px; font-weight: 600;
@@ -305,7 +314,7 @@
       <section class="view active" id="view-today">
         <div class="page-head">
           <h1 class="page-title">Today</h1>
-          <p class="page-sub">Pick a <strong>Big 3</strong> — if you only do these, today counts as a win. Everything else is a bonus.</p>
+          <p class="page-sub">Your <strong>Big 3</strong> decide whether the day <em>mattered</em>. Small tasks are bonus — they never count against you.</p>
         </div>
 
         <div class="quickadd">
@@ -313,10 +322,15 @@
           <button class="btn btn-primary" id="today-add-btn">Add</button>
         </div>
 
-        <div class="section-label">★ Your Big 3 <span class="hint">— the day's non-negotiables</span></div>
+        <div class="filter-bar" id="area-filter"></div>
+
+        <div class="section-label">★ Your Big 3 <span class="hint">— the day's anchors (mix work & personal freely; stop at 3)</span></div>
         <div class="big3-grid" id="big3-list"></div>
 
-        <div class="section-label">Also today <span class="hint">— if there's time & energy</span></div>
+        <div class="section-label">⚡ Small &amp; quick <span class="hint">— batch of little to-dos; knock out in a low-energy sweep</span></div>
+        <div id="quick-list"></div>
+
+        <div class="section-label">Also today <span class="hint">— if there's time &amp; energy</span></div>
         <div id="today-list"></div>
       </section>
 
@@ -445,8 +459,13 @@
     function getTask(id) { return state.tasks.find(function (t) { return t.id === id; }); }
     function removeTask(id) { state.tasks = state.tasks.filter(function (t) { return t.id !== id; }); save(); }
 
-    function big3Tasks() { return state.tasks.filter(function (t) { return t.status !== "done" && t.big3; }); }
-    function todayTasks() { return state.tasks.filter(function (t) { return t.status === "today" && !t.big3; }); }
+    var areaFilter = "all";
+    function inArea(t) { return areaFilter === "all" || t.area === areaFilter || (areaFilter === "untagged" && !t.area); }
+
+    function big3All() { return state.tasks.filter(function (t) { return t.status !== "done" && t.big3; }); }
+    function big3Tasks() { return state.tasks.filter(function (t) { return t.status !== "done" && t.big3 && inArea(t); }); }
+    function quickTasks() { return state.tasks.filter(function (t) { return t.status === "today" && !t.big3 && t.size === "quick" && inArea(t); }); }
+    function todayTasks() { return state.tasks.filter(function (t) { return t.status === "today" && !t.big3 && t.size !== "quick" && inArea(t); }); }
     function inboxTasks() { return state.tasks.filter(function (t) { return t.status === "inbox"; }); }
     function doneToday() { return state.tasks.filter(function (t) { return t.status === "done" && t.day === todayStr(); }); }
     function openTodayAll() { return state.tasks.filter(function (t) { return (t.status === "today" || t.big3) && t.status !== "done"; }); }
@@ -560,6 +579,22 @@
       return html;
     }
 
+    function renderAreaFilter() {
+      var el = document.getElementById("area-filter");
+      var open = openTodayAll();
+      var hasUntagged = open.some(function (t) { return !t.area; });
+      var opts = [["all", "All"]];
+      AREAS.forEach(function (a) { opts.push([a, a]); });
+      if (hasUntagged) opts.push(["untagged", "untagged"]);
+      el.innerHTML = '<span class="flabel">View</span>' + opts.map(function (o) {
+        var n = o[0] === "all" ? open.length
+          : o[0] === "untagged" ? open.filter(function (t) { return !t.area; }).length
+          : open.filter(function (t) { return t.area === o[0]; }).length;
+        return '<button class="fbtn ' + (areaFilter === o[0] ? "on" : "") + '" data-act="areafilter" data-area="' + o[0] + '">'
+          + o[1] + ' <span style="opacity:.6">' + n + '</span></button>';
+      }).join("");
+    }
+
     function render() {
       rollover();
 
@@ -575,15 +610,28 @@
       var greet = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
       document.getElementById("greeting").textContent = greet + ", let's go gently.";
 
+      // area filter bar
+      renderAreaFilter();
+
       // Big 3
       var b3 = big3Tasks();
       var b3el = document.getElementById("big3-list");
       var b3html = b3.map(function (t) { return taskCard(t); }).join("");
-      var slotsLeft = 3 - b3.length;
-      for (var i = 0; i < slotsLeft; i++) {
-        b3html += '<div class="big3-empty">Empty slot — tap ★ on a task to promote it here (aim for 3, stop at 3)</div>';
+      if (areaFilter === "all") {
+        var slotsLeft = 3 - big3All().length;
+        for (var i = 0; i < slotsLeft; i++) {
+          b3html += '<div class="big3-empty">Empty slot — tap ★ on a task to promote it here (aim for 3, stop at 3)</div>';
+        }
+      } else if (!b3.length) {
+        b3html = '<div class="big3-empty">No Big 3 in this area. Your Big 3 is one shared set of 3 for the whole day — switch to All to see it.</div>';
       }
       b3el.innerHTML = b3html;
+
+      // Small & quick batch
+      var qk = quickTasks();
+      document.getElementById("quick-list").innerHTML = qk.length
+        ? qk.map(function (t) { return taskCard(t); }).join("")
+        : '<div class="empty-state">No little tasks batched. Tag a task <strong>quick</strong> (via ⋯) to park it here.</div>';
 
       // Also today
       var tl = todayTasks();
@@ -758,8 +806,10 @@
         if (t.status === "done") { t.status = t.big3 ? "today" : "today"; t.completedAt = null; }
         else { t.status = "done"; t.completedAt = Date.now(); t.day = todayStr(); toast(pickPraise()); }
         save(); render();
+      } else if (act === "areafilter") {
+        areaFilter = el.dataset.area; render(); return;
       } else if (act === "star" && t) {
-        if (!t.big3 && big3Tasks().length >= 3) { toast("Big 3 is full — that's the point. Finish or swap one first."); return; }
+        if (!t.big3 && big3All().length >= 3) { toast("Big 3 is full — that's the point. Finish or swap one first."); return; }
         t.big3 = !t.big3;
         if (t.big3 && t.status === "inbox") t.status = "today";
         save(); render();
