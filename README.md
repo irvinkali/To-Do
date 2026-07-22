@@ -48,23 +48,25 @@ it today — that separation is the point, and it's what lets the loop close.
 > Grounded in: GTD's "capture everything" + "mind like water," and the Zeigarnik
 > effect on intrusive task rumination.
 
-### 2. A Big 3 — beat choice paralysis
+### 2. Anchors — beat choice paralysis
 A long list triggers overwhelm and freeze; more visible options = harder to
-start (choice overload). So each day you promote **at most three** tasks to your
-Big 3: *if you only do these, today is a win.* Three is deliberate — small enough
-to actually finish, which protects the daily sense of "I did what I set out to
-do" instead of the usual "I cleared 6 of 22 and still feel behind." Everything
-else lives under "Also today" as a genuine bonus, not a debt.
+start (choice overload). So each day you promote a tiny set of **anchors** —
+*if you only do these, today is a win.* Everything else lives under "Small &
+quick" or "Also today" as a genuine bonus, not a debt.
 
 > Grounded in: the "1–3 MITs / Most Important Tasks" method and Ivy Lee's
-> six-task rule, trimmed to three for ADHD load.
+> six-task rule, trimmed hard for ADHD load.
 
-**One Big 3 for the whole day — not one per context.** It's tempting to run a
-Work-3 *and* a Personal-3, but that's six must-dos, and you've quietly rebuilt
-the overwhelm the system exists to prevent. Your worth is protected by keeping
-the "made today matter" number small and *singular*. So the Big 3 is one shared
-set of three; tag each one Work or Personal if you like, and use the **area
-filter** at the top of Today to look at just work when you're in work mode.
+**Work Big 3 + one Home/Life anchor.** A single shared Big 3 is cleanest in
+theory, but real life isn't balanced: work is deadline-dense and eats most of
+the day, while home is more "when there's time." So the anchors split into
+**up to 3 for work** and **exactly 1 for home** — four total, still small enough
+to protect the "I did what mattered" feeling, but weighted the way your actual
+day is. The single home anchor guarantees life never silently drops off the list,
+without pretending you'll do three home projects on a Tuesday. Star (★) a task to
+anchor it; the app routes it to Work or Home by its category and enforces each
+cap (3 and 1). The **View** filter (All / Work / Home / Life) lets you see just
+one side when you're in that headspace.
 
 **Small work tasks live in their own lane — and never count against you.** Work
 throws off a pile of little things that just have to happen, usually more than
@@ -89,12 +91,23 @@ that never arrives.
 > Grounded in: energy-management / "spoon theory" approaches and executive-function
 > coaching, which consistently outperform pure priority sorting for ADHD.
 
-### 4. Break it down to the next tiny step
+### 4. Break it down to the next tiny step — and surface *that* step
 Task initiation is the classic ADHD wall — you avoid the task because the *first
 physical action* is fuzzy. Any task expands into micro-steps, and the prompt is
 always the same: **"what's the very next physical action?"** "File the WPAFB
 report" is paralyzing; "open the report template" is doable. You only ever have
 to see the next step.
+
+**Steps can be surfaced onto today as their own quick task.** This is the fix
+for long, multi-day projects — the kind home life is full of ("repaint the
+fence," "sort the garage"). You'd never finish the whole project in a day, and
+being forced to check off the *overarching* task means it sits there, permanently
+un-done, quietly reading as failure. Instead the project lives in your backlog,
+and each day you **surface one step** (`→ today`) so *that step* becomes the thing
+on your plan. Checking it off is a real, complete win, and the project advances —
+without the project itself needing to be "done." A surfaced step can even be your
+Home/Life anchor for the day. Progress on a step *is* progress; the system treats
+it that way.
 
 > Grounded in: GTD's "next action" principle and cognitive-behavioral task
 > chunking.

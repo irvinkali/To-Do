@@ -189,6 +189,9 @@
     .chip-high { background: var(--os-green-dim); color: var(--os-green); }
     .chip-due { background: var(--os-amber-dim); color: var(--os-amber); }
     .chip-plain { background: var(--os-bg-input); color: var(--os-text-muted); }
+    .chip-step { background: var(--os-purple-dim); color: var(--os-purple); }
+    .parent-line { font-size: 12px; color: var(--os-text-faint); margin-top: 3px; overflow-wrap: anywhere; }
+    .step-surf { font-size: 12px; padding: 3px 9px; border-radius: 999px; }
 
     .task-actions { display: flex; gap: 2px; align-items: center; flex: none; }
     .icon-btn {
@@ -342,7 +345,7 @@
       <section class="view active" id="view-today">
         <div class="page-head">
           <h1 class="page-title">Today</h1>
-          <p class="page-sub">Your <strong>Big 3</strong> decide whether the day <em>mattered</em>. Small tasks are bonus — they never count against you.</p>
+          <p class="page-sub">Your <strong>anchors</strong> decide whether the day <em>mattered</em>: up to 3 for work, 1 for home. Everything else is bonus — it never counts against you.</p>
         </div>
 
         <div class="quickadd">
@@ -352,10 +355,17 @@
 
         <div class="filter-bar" id="area-filter"></div>
 
-        <div class="section-label">★ Your Big 3 <span class="hint">— the day's anchors (mix work & personal freely; stop at 3)</span></div>
-        <div class="big3-grid" id="big3-list"></div>
+        <div id="sec-work">
+          <div class="section-label">💼 Work — Big 3 <span class="hint">— your day's work anchors (stop at 3)</span></div>
+          <div class="big3-grid" id="work-big3"></div>
+        </div>
 
-        <div class="section-label">⚡ Small &amp; quick <span class="hint">— batch of little to-dos; knock out in a low-energy sweep</span></div>
+        <div id="sec-home">
+          <div class="section-label">🏡 Home / Life — your one thing <span class="hint">— one home anchor so life doesn't vanish (a whole task, or a single step of a bigger project)</span></div>
+          <div class="big3-grid" id="home-big1"></div>
+        </div>
+
+        <div class="section-label">⚡ Small &amp; quick <span class="hint">— little to-dos & surfaced steps; sweep them when energy's low</span></div>
         <div id="quick-list"></div>
 
         <div class="section-label">Also today <span class="hint">— if there's time &amp; energy</span></div>
@@ -590,24 +600,66 @@
     // ============ model helpers ============
     function getTask(id) { return tasks.find(function (t) { return t.id === id; }); }
     function isDone(t) { return t.done === true || t.status === "Done"; }
-    function onToday(t) { return t.mDay === todayStr(); }
-    function areaOf(t) {
-      var c = t.category && CATEGORIES[t.category];
-      return c ? c.type : "";
-    }
-    function inArea(t) {
-      if (areaFilter === "all") return true;
-      if (areaFilter === "untagged") return !areaOf(t);
-      return areaOf(t) === areaFilter;
-    }
+    function onToday(x) { return x && x.mDay === todayStr(); }
+    function areaOfTask(t) { var c = t.category && CATEGORIES[t.category]; return c ? c.type : ""; }
+    function catLabel(t) { var c = t.category && CATEGORIES[t.category]; return c ? c.label : (t.category || ""); }
 
-    function big3All() { return tasks.filter(function (t) { return !isDone(t) && t.mBig3 && onToday(t); }); }
-    function big3Tasks() { return big3All().filter(inArea); }
-    function quickTasks() { return tasks.filter(function (t) { return !isDone(t) && onToday(t) && !t.mBig3 && t.mSize === "quick" && inArea(t); }); }
-    function todayOther() { return tasks.filter(function (t) { return !isDone(t) && onToday(t) && !t.mBig3 && t.mSize !== "quick" && inArea(t); }); }
-    function openTodayAll() { return tasks.filter(function (t) { return !isDone(t) && onToday(t); }); }
+    // Build a unified list of "today items": tasks on today + steps surfaced onto today.
+    function makeItem(t, s, sidx) {
+      var base = s || t;
+      return {
+        kind: s ? "step" : "task",
+        key: s ? ("s:" + t.id + ":" + sidx) : ("t:" + t.id),
+        task: t, step: s || null, sidx: (sidx == null ? -1 : sidx), obj: base,
+        title: s ? s.text : t.title,
+        area: areaOfTask(t),
+        big3: !!base.mBig3,
+        size: s ? (base.mSize || "quick") : (base.mSize || ""),
+        energy: base.mEnergy || "",
+        done: s ? !!s.done : isDone(t),
+        parentTitle: s ? t.title : null
+      };
+    }
+    function collectToday() {
+      var items = [];
+      tasks.forEach(function (t) {
+        if (onToday(t) && !isDone(t)) items.push(makeItem(t, null));
+        (t.steps || []).forEach(function (s, i) {
+          if (onToday(s) && !s.done) items.push(makeItem(t, s, i));
+        });
+      });
+      return items;
+    }
+    function resolveKey(key) {
+      if (!key) return null;
+      if (key.indexOf("t:") === 0) { var t = getTask(key.slice(2)); return t ? makeItem(t, null) : null; }
+      if (key.indexOf("s:") === 0) {
+        var rest = key.slice(2), at = rest.lastIndexOf(":");
+        var t2 = getTask(rest.slice(0, at)), si = +rest.slice(at + 1);
+        var s = t2 && t2.steps && t2.steps[si];
+        return s ? makeItem(t2, s, si) : null;
+      }
+      return null;
+    }
+    function anchorCounts() {
+      var w = 0, h = 0;
+      collectToday().forEach(function (i) { if (i.big3) { if (i.area === "work") w++; else h++; } });
+      return { work: w, home: h };
+    }
+    function inAreaItem(i) {
+      if (areaFilter === "all") return true;
+      if (areaFilter === "work") return i.area === "work";
+      return i.area !== "work"; // "home" = personal + untagged
+    }
     function backlog() { return tasks.filter(function (t) { return !isDone(t) && !onToday(t); }); }
-    function doneToday() { return tasks.filter(function (t) { return isDone(t) && t.mDoneDay === todayStr(); }); }
+    function winsToday() {
+      var out = [];
+      tasks.forEach(function (t) {
+        if (isDone(t) && t.mDoneDay === todayStr()) out.push({ title: t.title, parent: null });
+        (t.steps || []).forEach(function (s) { if (s.done && s.mDoneDay === todayStr()) out.push({ title: s.text, parent: t.title }); });
+      });
+      return out;
+    }
 
     // ============ mutations ============
     function addTask(title, toToday) {
@@ -629,6 +681,33 @@
       if (done) t.mBig3 = false;
       persist(t);
     }
+    function setStepDone(t, s, done) {
+      s.done = done;
+      s.mDoneDay = done ? todayStr() : null;
+      if (done) { s.mBig3 = false; }
+      persist(t);
+    }
+    function toggleAnchor(item) {
+      var obj = item.obj;
+      if (!obj.mBig3) {
+        var c = anchorCounts();
+        if (item.area === "work") {
+          if (c.work >= 3) { toast("Work Big 3 is full — that's the point. Finish or swap one first."); return; }
+        } else {
+          if (c.home >= 1) { toast("Home is one anchor — finish or swap it first."); return; }
+        }
+        obj.mBig3 = true;
+        obj.mDay = todayStr(); // anchoring pulls it onto today
+      } else {
+        obj.mBig3 = false;
+      }
+      persist(item.task);
+    }
+    function addStep(t, text) {
+      if (!t.steps) t.steps = [];
+      t.steps.push({ id: t.steps.length.toString(), text: text, done: false });
+    }
+    function reindexSteps(t) { (t.steps || []).forEach(function (s, i) { s.id = i.toString(); }); }
 
     // ============ toast ============
     var toastEl = document.getElementById("toast");
@@ -650,23 +729,35 @@
       });
     }
     function chip(label, cls) { return '<span class="chip ' + cls + '">' + esc(label) + "</span>"; }
-
     function dueChip(t) {
       if (!t.dueDate) return "";
-      var label = t.dueDate;
-      var d = new Date(t.dueDate);
+      var label = t.dueDate, d = new Date(t.dueDate);
       if (!isNaN(d.getTime())) label = d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
       return chip("⏱ " + label, "chip-due");
     }
+    function sizeEnergyEditor(obj, id, sidx) {
+      var sAttr = 'data-id="' + id + '"' + (sidx != null ? ' data-sidx="' + sidx + '"' : "");
+      var html = '<div class="edit-row">';
+      html += '<div class="edit-group"><span class="edit-label">Size</span><div class="seg">';
+      SIZES.forEach(function (s) {
+        html += '<button class="' + (obj.mSize === s[0] ? "on" : "") + '" data-act="set" data-field="mSize" data-val="' + s[0] + '" ' + sAttr + '>' + s[0] + "</button>";
+      });
+      html += "</div></div>";
+      html += '<div class="edit-group"><span class="edit-label">Energy</span><div class="seg">';
+      ENERGIES.forEach(function (e) {
+        html += '<button class="' + (obj.mEnergy === e[0] ? "on" : "") + '" data-act="set" data-field="mEnergy" data-val="' + e[0] + '" ' + sAttr + '>' + e[0] + "</button>";
+      });
+      html += "</div></div></div>";
+      return html;
+    }
 
-    function taskCard(t, ctx) {
-      ctx = ctx || {};
+    function taskCard(t) {
       var done = isDone(t);
-      var classes = "task" + (done ? " done" : "") + (t.mBig3 && onToday(t) ? " big3" : "");
+      var anchored = t.mBig3 && onToday(t);
+      var classes = "task" + (done ? " done" : "") + (anchored ? " big3" : "");
       var meta = "";
-      var cat = t.category && CATEGORIES[t.category];
-      if (cat) meta += chip(cat.label, "chip-" + cat.type);
-      else if (t.category) meta += chip(t.category, "chip-cat");
+      var lbl = catLabel(t);
+      if (lbl) meta += chip(lbl, "chip-" + (areaOfTask(t) || "cat"));
       if (t.mSize) { var sz = SIZES.find(function (s) { return s[0] === t.mSize; }); meta += chip(sz ? sz[1] : t.mSize, "chip-" + t.mSize); }
       if (t.mEnergy) { var en = ENERGIES.find(function (e) { return e[0] === t.mEnergy; }); meta += chip(en ? en[1] : t.mEnergy, "chip-" + t.mEnergy); }
       meta += dueChip(t);
@@ -674,16 +765,11 @@
       var doneCount = steps.filter(function (s) { return s.done; }).length;
       if (steps.length) meta += chip(doneCount + "/" + steps.length + " steps", "chip-plain");
 
-      var isExp = !!expanded[t.id];
-      var starOn = (t.mBig3 && onToday(t)) ? "on" : "";
-      var star = done ? "" :
-        '<button class="icon-btn star ' + starOn + '" data-act="star" data-id="' + t.id + '" title="Toggle Big 3">★</button>';
-      var pullBtn = (!done && !onToday(t))
-        ? '<button class="icon-btn" data-act="totoday" data-id="' + t.id + '" title="Pull onto today">→</button>' : "";
-      var editBtn = '<button class="icon-btn" data-act="edit" data-id="' + t.id + '" title="Tags & steps">⋯</button>';
-      // remove = take off today's plan (non-destructive). Only shown for tasks on today.
-      var removeBtn = (onToday(t) && !done)
-        ? '<button class="icon-btn" data-act="remove" data-id="' + t.id + '" title="Take off today (keeps the task)">✕</button>' : "";
+      var key = "t:" + t.id, isExp = !!expanded[key];
+      var star = done ? "" : '<button class="icon-btn star ' + (anchored ? "on" : "") + '" data-act="star" data-id="' + t.id + '" title="Make an anchor">★</button>';
+      var pullBtn = (!done && !onToday(t)) ? '<button class="icon-btn" data-act="totoday" data-id="' + t.id + '" title="Pull onto today">→</button>' : "";
+      var editBtn = '<button class="icon-btn" data-act="edit" data-id="' + t.id + '" title="Steps & tags">⋯</button>';
+      var removeBtn = (onToday(t) && !done) ? '<button class="icon-btn" data-act="remove" data-id="' + t.id + '" title="Take off today (keeps the task)">✕</button>' : "";
 
       var html = '<div class="' + classes + '" data-id="' + t.id + '">';
       html += '<div class="check ' + (done ? "checked" : "") + '" data-act="check" data-id="' + t.id + '"></div>';
@@ -694,10 +780,15 @@
       if (steps.length || isExp) {
         html += '<div class="subtasks">';
         steps.forEach(function (s, i) {
+          var surfaced = onToday(s);
+          var surfBtn = s.done ? "" : (surfaced
+            ? '<button class="btn btn-outline step-surf" data-act="surface" data-id="' + t.id + '" data-sidx="' + i + '" title="Remove from today">⚡ on today</button>'
+            : '<button class="btn btn-ghost step-surf" data-act="surface" data-id="' + t.id + '" data-sidx="' + i + '" title="Add this step to today as a quick task">→ today</button>');
           html += '<div class="subtask">'
-            + '<div class="mini-check ' + (s.done ? "checked" : "") + '" data-act="subcheck" data-id="' + t.id + '" data-sidx="' + i + '"></div>'
+            + '<div class="mini-check ' + (s.done ? "checked" : "") + '" data-act="check" data-id="' + t.id + '" data-sidx="' + i + '"></div>'
             + '<span class="' + (s.done ? "done" : "") + '">' + esc(s.text) + "</span>"
-            + '<button class="icon-btn" data-act="subdel" data-id="' + t.id + '" data-sidx="' + i + '" style="margin-left:auto;font-size:12px;">✕</button>'
+            + '<span style="margin-left:auto;display:flex;gap:4px;align-items:center;">' + surfBtn
+            + '<button class="icon-btn" data-act="subdel" data-id="' + t.id + '" data-sidx="' + i + '" style="font-size:12px;">✕</button></span>'
             + "</div>";
         });
         if (isExp) {
@@ -709,48 +800,78 @@
         html += "</div>";
       }
 
-      if (isExp) {
-        html += '<div class="edit-row">';
-        html += '<div class="edit-group"><span class="edit-label">Size</span><div class="seg">';
-        SIZES.forEach(function (s) {
-          html += '<button class="' + (t.mSize === s[0] ? "on" : "") + '" data-act="set" data-field="mSize" data-val="' + s[0] + '" data-id="' + t.id + '">' + s[0] + "</button>";
-        });
-        html += "</div></div>";
-        html += '<div class="edit-group"><span class="edit-label">Energy</span><div class="seg">';
-        ENERGIES.forEach(function (e) {
-          html += '<button class="' + (t.mEnergy === e[0] ? "on" : "") + '" data-act="set" data-field="mEnergy" data-val="' + e[0] + '" data-id="' + t.id + '">' + e[0] + "</button>";
-        });
-        html += "</div></div>";
-        html += "</div>";
-      }
+      if (isExp) html += sizeEnergyEditor(t, t.id, null);
 
-      html += "</div>"; // body
+      html += "</div>";
       html += '<div class="task-actions">' + star + pullBtn + editBtn + removeBtn + "</div>";
       html += "</div>";
       return html;
     }
 
-    function renderAreaFilter(elId, current, source) {
-      var el = document.getElementById(elId);
-      var open = source();
-      var hasUntagged = open.some(function (t) { return !areaOf(t); });
+    function stepCard(item) {
+      var t = item.task, s = item.step, i = item.sidx;
+      var anchored = !!s.mBig3;
+      var classes = "task" + (anchored ? " big3" : "");
+      var key = item.key, isExp = !!expanded[key];
+      var meta = "";
+      var lbl = catLabel(t);
+      if (lbl) meta += chip(lbl, "chip-" + (areaOfTask(t) || "cat"));
+      meta += chip("step", "chip-step");
+      var size = s.mSize || "quick";
+      var sz = SIZES.find(function (x) { return x[0] === size; });
+      meta += chip(sz ? sz[1] : size, "chip-" + size);
+      if (s.mEnergy) { var en = ENERGIES.find(function (e) { return e[0] === s.mEnergy; }); meta += chip(en ? en[1] : s.mEnergy, "chip-" + s.mEnergy); }
+
+      var star = '<button class="icon-btn star ' + (anchored ? "on" : "") + '" data-act="star" data-id="' + t.id + '" data-sidx="' + i + '" title="Make an anchor">★</button>';
+      var editBtn = '<button class="icon-btn" data-act="edit" data-id="' + t.id + '" data-sidx="' + i + '" title="Tags">⋯</button>';
+      var removeBtn = '<button class="icon-btn" data-act="remove" data-id="' + t.id + '" data-sidx="' + i + '" title="Take off today (keeps the step)">✕</button>';
+
+      var html = '<div class="' + classes + '" data-id="' + t.id + '">';
+      html += '<div class="check" data-act="check" data-id="' + t.id + '" data-sidx="' + i + '"></div>';
+      html += '<div class="task-body">';
+      html += '<div class="task-title">' + esc(s.text) + "</div>";
+      html += '<div class="parent-line">↳ from: ' + esc(t.title) + "</div>";
+      html += '<div class="task-meta">' + meta + "</div>";
+      if (isExp) html += sizeEnergyEditor(s, t.id, i);
+      html += "</div>";
+      html += '<div class="task-actions">' + star + editBtn + removeBtn + "</div>";
+      html += "</div>";
+      return html;
+    }
+
+    function cardFor(item) { return item.kind === "task" ? taskCard(item.task) : stepCard(item); }
+
+    function renderTodayFilter() {
+      var el = document.getElementById("area-filter");
+      var items = collectToday();
+      var opts = [["all", "All"], ["work", "Work"], ["home", "Home / Life"]];
+      el.innerHTML = '<span class="flabel">View</span>' + opts.map(function (o) {
+        var n = o[0] === "all" ? items.length
+          : o[0] === "work" ? items.filter(function (i) { return i.area === "work"; }).length
+          : items.filter(function (i) { return i.area !== "work"; }).length;
+        return '<button class="fbtn ' + (areaFilter === o[0] ? "on" : "") + '" data-act="areafilter" data-area="' + o[0] + '">'
+          + o[1] + ' <span style="opacity:.6">' + n + '</span></button>';
+      }).join("");
+    }
+    function renderBacklogFilter() {
+      var el = document.getElementById("backlog-filter");
+      var open = backlog();
+      var hasUntagged = open.some(function (t) { return !areaOfTask(t); });
       var opts = [["all", "All"], ["work", "work"], ["personal", "personal"]];
       if (hasUntagged) opts.push(["untagged", "untagged"]);
       el.innerHTML = '<span class="flabel">View</span>' + opts.map(function (o) {
         var n = o[0] === "all" ? open.length
-          : o[0] === "untagged" ? open.filter(function (t) { return !areaOf(t); }).length
-          : open.filter(function (t) { return areaOf(t) === o[0]; }).length;
-        return '<button class="fbtn ' + (current === o[0] ? "on" : "") + '" data-act="' + (elId === "area-filter" ? "areafilter" : "backlogfilter") + '" data-area="' + o[0] + '">'
+          : o[0] === "untagged" ? open.filter(function (t) { return !areaOfTask(t); }).length
+          : open.filter(function (t) { return areaOfTask(t) === o[0]; }).length;
+        return '<button class="fbtn ' + (backlogFilter === o[0] ? "on" : "") + '" data-act="backlogfilter" data-area="' + o[0] + '">'
           + o[1] + ' <span style="opacity:.6">' + n + '</span></button>';
       }).join("");
     }
 
     function render() {
-      // counts
-      document.getElementById("count-today").textContent = openTodayAll().length;
+      document.getElementById("count-today").textContent = collectToday().length;
       document.getElementById("count-inbox").textContent = backlog().length;
 
-      // header
       var d = new Date();
       document.getElementById("today-label").textContent =
         d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
@@ -759,36 +880,45 @@
       document.getElementById("greeting").textContent = greet + ", let's go gently.";
 
       // ---- TODAY ----
-      renderAreaFilter("area-filter", areaFilter, openTodayAll);
+      renderTodayFilter();
+      var items = collectToday();
+      var vis = items.filter(inAreaItem);
+      var counts = anchorCounts();
 
-      var b3 = big3Tasks();
-      var b3html = b3.map(function (t) { return taskCard(t); }).join("");
-      if (areaFilter === "all") {
-        var slotsLeft = 3 - big3All().length;
-        for (var i = 0; i < slotsLeft; i++) {
-          b3html += '<div class="big3-empty">Empty slot — tap ★ on a task to promote it here (aim for 3, stop at 3)</div>';
-        }
-      } else if (!b3.length) {
-        b3html = '<div class="big3-empty">No Big 3 in this area. Your Big 3 is one shared set of 3 for the whole day — switch to All to see it.</div>';
+      document.getElementById("sec-work").style.display = (areaFilter === "home") ? "none" : "";
+      document.getElementById("sec-home").style.display = (areaFilter === "work") ? "none" : "";
+
+      var work = vis.filter(function (i) { return i.big3 && i.area === "work"; });
+      var wHtml = work.map(cardFor).join("");
+      if (areaFilter !== "home") {
+        for (var i = 0; i < 3 - counts.work; i++)
+          wHtml += '<div class="big3-empty">Empty slot — tap ★ on a work task to anchor it (aim for 3, stop at 3)</div>';
       }
-      document.getElementById("big3-list").innerHTML = b3html;
+      document.getElementById("work-big3").innerHTML = wHtml;
 
-      var qk = quickTasks();
-      document.getElementById("quick-list").innerHTML = qk.length
-        ? qk.map(function (t) { return taskCard(t); }).join("")
-        : '<div class="empty-state">No little tasks batched. Tag a task <strong>quick</strong> (via ⋯) to park it here.</div>';
+      var home = vis.filter(function (i) { return i.big3 && i.area !== "work"; });
+      var hHtml = home.map(cardFor).join("");
+      if (areaFilter !== "work" && counts.home < 1) {
+        hHtml += '<div class="big3-empty">Empty — tap ★ on a home task, or surface one step of a bigger project, so life gets one anchor too</div>';
+      }
+      document.getElementById("home-big1").innerHTML = hHtml;
 
-      var tl = todayOther();
-      document.getElementById("today-list").innerHTML = tl.length
-        ? tl.map(function (t) { return taskCard(t); }).join("")
+      var quick = vis.filter(function (i) { return !i.big3 && i.size === "quick"; });
+      document.getElementById("quick-list").innerHTML = quick.length
+        ? quick.map(cardFor).join("")
+        : '<div class="empty-state">No little tasks batched. Tag a task <strong>quick</strong> (⋯), or surface a project step with <strong>→ today</strong>.</div>';
+
+      var also = vis.filter(function (i) { return !i.big3 && i.size !== "quick"; });
+      document.getElementById("today-list").innerHTML = also.length
+        ? also.map(cardFor).join("")
         : '<div class="empty-state">Nothing else queued. That\'s allowed. A short list is a kind list.</div>';
 
       // ---- BRAIN DUMP / BACKLOG ----
-      renderAreaFilter("backlog-filter", backlogFilter, backlog);
+      renderBacklogFilter();
       var bl = backlog().filter(function (t) {
         if (backlogFilter === "all") return true;
-        if (backlogFilter === "untagged") return !areaOf(t);
-        return areaOf(t) === backlogFilter;
+        if (backlogFilter === "untagged") return !areaOfTask(t);
+        return areaOfTask(t) === backlogFilter;
       });
       document.getElementById("inbox-list").innerHTML = bl.length
         ? bl.map(function (t) { return taskCard(t); }).join("")
@@ -799,44 +929,48 @@
     }
 
     // ============ Focus ============
-    var focus = { taskId: null, secondsLeft: 25 * 60, running: false, tick: null, minutes: settings.pomodoro || 25 };
+    var focus = { key: null, secondsLeft: 25 * 60, running: false, tick: null, minutes: settings.pomodoro || 25 };
     var PRESETS = [10, 15, 25, 45];
 
     function renderFocus() {
       var picker = document.getElementById("focus-picker");
       var active = document.getElementById("focus-active");
-      var candidates = openTodayAll();
+      var candidates = collectToday();
 
-      if (!focus.taskId) {
+      var item = focus.key ? resolveKey(focus.key) : null;
+      if (focus.key && (!item || item.done)) { focus.key = null; stopTimer(); item = null; }
+
+      if (!focus.key) {
         active.style.display = "none";
         picker.style.display = "block";
         if (!candidates.length) {
-          picker.innerHTML = '<div class="empty-state"><div class="big">🎯</div>No open tasks on today\'s plan yet. Pull a couple onto Today, then come back and pick one.</div>';
+          picker.innerHTML = '<div class="empty-state"><div class="big">🎯</div>No open items on today\'s plan yet. Pull a couple onto Today, then come back and pick one.</div>';
           return;
         }
         var html = '<div class="section-label">Pick one thing to focus on</div>';
-        html += candidates.map(function (t) {
-          var sz = t.mSize ? SIZES.find(function (s) { return s[0] === t.mSize; }) : null;
-          return '<div class="task" style="cursor:pointer" data-act="focuspick" data-id="' + t.id + '">'
-            + '<div class="task-body"><div class="task-title">' + (t.mBig3 ? "★ " : "") + esc(t.title) + "</div>"
-            + (sz ? '<div class="task-meta">' + chip(sz[1], "chip-" + t.mSize) + "</div>" : "")
-            + "</div>"
-            + '<div class="task-actions"><span class="btn btn-outline btn-sm">Focus →</span></div>'
-            + "</div>";
+        html += candidates.map(function (it) {
+          var sz = it.size ? SIZES.find(function (s) { return s[0] === it.size; }) : null;
+          return '<div class="task" style="cursor:pointer" data-act="focuspick" data-key="' + it.key + '">'
+            + '<div class="task-body"><div class="task-title">' + (it.big3 ? "★ " : "") + esc(it.title) + "</div>"
+            + (it.parentTitle ? '<div class="parent-line">↳ from: ' + esc(it.parentTitle) + "</div>" : "")
+            + (sz ? '<div class="task-meta">' + chip(sz[1], "chip-" + it.size) + "</div>" : "")
+            + "</div><div class=\"task-actions\"><span class=\"btn btn-outline btn-sm\">Focus →</span></div></div>";
         }).join("");
         picker.innerHTML = html;
         return;
       }
 
-      var t = getTask(focus.taskId);
-      if (!t || isDone(t)) { focus.taskId = null; stopTimer(); renderFocus(); return; }
       picker.style.display = "none";
       active.style.display = "block";
-      document.getElementById("focus-task-title").textContent = (t.mBig3 ? "★ " : "") + t.title;
-      var nextStep = (t.steps || []).find(function (s) { return !s.done; });
-      document.getElementById("focus-next-step").textContent = nextStep
-        ? "Next tiny step: " + nextStep.text
-        : "Tip: what's the very next physical action? Just start there.";
+      document.getElementById("focus-task-title").textContent = (item.big3 ? "★ " : "") + item.title;
+      var hint;
+      if (item.kind === "task") {
+        var nextStep = (item.task.steps || []).find(function (s) { return !s.done; });
+        hint = nextStep ? "Next tiny step: " + nextStep.text : "Tip: what's the very next physical action? Just start there.";
+      } else {
+        hint = "From: " + item.parentTitle + " — just this one step. Start there.";
+      }
+      document.getElementById("focus-next-step").textContent = hint;
 
       document.getElementById("preset-row").innerHTML = PRESETS.map(function (m) {
         return '<button class="preset ' + (focus.minutes === m ? "on" : "") + '" data-act="preset" data-min="' + m + '">' + m + "m</button>";
@@ -872,11 +1006,7 @@
       var el = document.getElementById("timer"); if (el) el.classList.remove("running");
       var btn = document.getElementById("timer-start"); if (btn) btn.textContent = "Start";
     }
-    function resetTimer() {
-      stopTimer();
-      focus.secondsLeft = focus.minutes * 60;
-      updateTimerDisplay();
-    }
+    function resetTimer() { stopTimer(); focus.secondsLeft = focus.minutes * 60; updateTimerDisplay(); }
     function beep() {
       var ctx = new (window.AudioContext || window.webkitAudioContext)();
       var o = ctx.createOscillator(), g = ctx.createGain();
@@ -887,14 +1017,18 @@
 
     // ============ Shutdown ============
     function renderShutdown() {
-      var wins = doneToday();
+      var wins = winsToday();
       document.getElementById("wins-list").innerHTML = wins.length
-        ? wins.map(function (t) { return '<div class="win-item"><span class="dot">●</span><span>' + esc(t.title) + "</span></div>"; }).join("")
+        ? wins.map(function (w) {
+            return '<div class="win-item"><span class="dot">●</span><span>' + esc(w.title)
+              + (w.parent ? ' <span style="color:var(--os-text-faint);font-size:12px;">(' + esc(w.parent) + ")</span>" : "")
+              + "</span></div>";
+          }).join("")
         : '<div class="roll-item">Nothing checked off yet — and that\'s okay. Showing up is its own task.</div>';
 
-      var roll = openTodayAll();
+      var roll = collectToday();
       document.getElementById("roll-list").innerHTML = roll.length
-        ? roll.map(function (t) { return '<div class="roll-item"><span>○</span><span>' + (t.mBig3 ? "★ " : "") + esc(t.title) + "</span></div>"; }).join("")
+        ? roll.map(function (i) { return '<div class="roll-item"><span>○</span><span>' + (i.big3 ? "★ " : "") + esc(i.title) + "</span></div>"; }).join("")
         : '<div class="win-item"><span class="dot">●</span><span>Nothing left open on today\'s plan. Fully clear. Go rest.</span></div>';
 
       var restTitle = document.getElementById("rest-title");
@@ -920,88 +1054,91 @@
     });
 
     function wireAdd(inputId, btnId, toToday, msg) {
-      var input = document.getElementById(inputId);
-      var btn = document.getElementById(btnId);
-      function go() {
-        var t = addTask(input.value, toToday);
-        if (t) { input.value = ""; render(); toast(msg); }
-      }
+      var input = document.getElementById(inputId), btn = document.getElementById(btnId);
+      function go() { var t = addTask(input.value, toToday); if (t) { input.value = ""; render(); toast(msg); } }
       btn.addEventListener("click", go);
       input.addEventListener("keydown", function (e) { if (e.key === "Enter") go(); });
     }
     wireAdd("today-add", "today-add-btn", true, "Added to today");
     wireAdd("inbox-add", "inbox-add-btn", false, "Out of your head ✓");
 
+    // resolve the (task, step) an action targets from data-id + optional data-sidx
+    function target(el) {
+      var t = getTask(el.dataset.id);
+      if (!t) return null;
+      var sidx = el.dataset.sidx;
+      if (sidx != null) { var s = (t.steps || [])[+sidx]; return s ? { t: t, s: s, sidx: +sidx, item: makeItem(t, s, +sidx) } : null; }
+      return { t: t, s: null, sidx: -1, item: makeItem(t, null) };
+    }
+
     document.querySelector("main").addEventListener("click", function (e) {
       var el = e.target.closest("[data-act]");
       if (!el) return;
       var act = el.dataset.act;
-      var id = el.dataset.id;
-      var t = id ? getTask(id) : null;
 
-      if (act === "check" && t) {
-        setDone(t, !isDone(t));
-        if (isDone(t)) toast(pickPraise());
+      if (act === "areafilter") { areaFilter = el.dataset.area; render(); return; }
+      if (act === "backlogfilter") { backlogFilter = el.dataset.area; render(); return; }
+      if (act === "focuspick") { focus.key = el.dataset.key; resetTimer(); renderFocus(); return; }
+      if (act === "preset") { focus.minutes = parseInt(el.dataset.min, 10); settings.pomodoro = focus.minutes; saveSettings(); resetTimer(); renderFocus(); return; }
+
+      var tg = target(el);
+      if (!tg) return;
+      var t = tg.t, s = tg.s;
+
+      if (act === "check") {
+        if (s) { setStepDone(t, s, !s.done); if (s.done) toast(pickPraise()); }
+        else { setDone(t, !isDone(t)); if (isDone(t)) toast(pickPraise()); }
         render();
-      } else if (act === "areafilter") {
-        areaFilter = el.dataset.area; render();
-      } else if (act === "backlogfilter") {
-        backlogFilter = el.dataset.area; render();
-      } else if (act === "star" && t) {
-        if (!t.mBig3 && big3All().length >= 3) { toast("Big 3 is full — that's the point. Finish or swap one first."); return; }
-        t.mBig3 = !t.mBig3;
-        if (t.mBig3) t.mDay = todayStr();   // starring pulls it onto today
-        persist(t); render();
-      } else if (act === "totoday" && t) {
+      } else if (act === "star") {
+        toggleAnchor(tg.item); render();
+      } else if (act === "totoday") {
         t.mDay = todayStr(); persist(t); render(); toast("Pulled onto today");
-      } else if (act === "remove" && t) {
-        t.mDay = null; t.mBig3 = false; persist(t); render(); toast("Off today's plan — still in your backlog");
-      } else if (act === "edit" && t) {
-        expanded[id] = !expanded[id]; render();
-      } else if (act === "set" && t) {
-        var f = el.dataset.field, v = el.dataset.val;
-        t[f] = (t[f] === v) ? "" : v; persist(t); render();
-      } else if (act === "subcheck" && t) {
-        var s = (t.steps || [])[+el.dataset.sidx]; if (s) { s.done = !s.done; persist(t); render(); }
-      } else if (act === "subdel" && t) {
-        t.steps.splice(+el.dataset.sidx, 1); reindexSteps(t); persist(t); render();
-      } else if (act === "subadd" && t) {
-        var inp = document.querySelector('[data-subadd="' + id + '"]');
+      } else if (act === "surface") {
+        if (onToday(s)) { s.mDay = null; s.mBig3 = false; toast("Step off today"); }
+        else { s.mDay = todayStr(); if (!s.mSize) s.mSize = "quick"; toast("Step added to today ✓"); }
+        persist(t); render();
+      } else if (act === "remove") {
+        var obj = s || t; obj.mDay = null; obj.mBig3 = false; persist(t); render();
+        toast("Off today's plan — still in your backlog");
+      } else if (act === "edit") {
+        var key = s ? ("s:" + t.id + ":" + tg.sidx) : ("t:" + t.id);
+        expanded[key] = !expanded[key]; render();
+      } else if (act === "set") {
+        var obj2 = s || t, f = el.dataset.field, v = el.dataset.val;
+        obj2[f] = (obj2[f] === v) ? "" : v; persist(t); render();
+      } else if (act === "subdel") {
+        t.steps.splice(tg.sidx, 1); reindexSteps(t); persist(t); render();
+      } else if (act === "subadd") {
+        var inp = document.querySelector('[data-subadd="' + t.id + '"]');
         if (inp && inp.value.trim()) { addStep(t, inp.value.trim()); persist(t); render(); }
-      } else if (act === "focuspick" && t) {
-        focus.taskId = id; resetTimer(); renderFocus();
-      } else if (act === "preset") {
-        focus.minutes = parseInt(el.dataset.min, 10); settings.pomodoro = focus.minutes; saveSettings(); resetTimer(); renderFocus();
       }
     });
-
-    function addStep(t, text) {
-      if (!t.steps) t.steps = [];
-      t.steps.push({ id: t.steps.length.toString(), text: text, done: false });
-    }
-    function reindexSteps(t) { (t.steps || []).forEach(function (s, i) { s.id = i.toString(); }); }
 
     document.querySelector("main").addEventListener("keydown", function (e) {
       if (e.key !== "Enter") return;
       var inp = e.target.closest("[data-subadd]");
       if (inp) {
-        var id = inp.getAttribute("data-subadd");
-        var t = getTask(id);
+        var t = getTask(inp.getAttribute("data-subadd"));
         if (t && inp.value.trim()) { addStep(t, inp.value.trim()); persist(t); render(); }
       }
     });
 
     document.getElementById("timer-start").addEventListener("click", startTimer);
     document.getElementById("timer-reset").addEventListener("click", function () { resetTimer(); renderFocus(); });
-    document.getElementById("focus-change").addEventListener("click", function () { stopTimer(); focus.taskId = null; renderFocus(); });
+    document.getElementById("focus-change").addEventListener("click", function () { stopTimer(); focus.key = null; renderFocus(); });
     document.getElementById("focus-done").addEventListener("click", function () {
-      var t = getTask(focus.taskId);
-      if (t) { setDone(t, true); stopTimer(); focus.taskId = null; toast(pickPraise()); render(); switchView("focus"); }
+      var item = resolveKey(focus.key);
+      if (item) {
+        if (item.kind === "step") setStepDone(item.task, item.step, true);
+        else setDone(item.task, true);
+        stopTimer(); focus.key = null; toast(pickPraise()); render(); switchView("focus");
+      }
     });
 
     document.getElementById("close-day").addEventListener("click", function () {
-      var open = openTodayAll();
-      open.forEach(function (t) { t.mDay = null; t.mBig3 = false; persist(t); });
+      var touched = {};
+      collectToday().forEach(function (i) { i.obj.mDay = null; i.obj.mBig3 = false; touched[i.task.id] = i.task; });
+      Object.keys(touched).forEach(function (k) { persist(touched[k]); });
       render();
       toast("Day closed. Go rest — you've earned nothing less. 🌙");
       switchView("today");
