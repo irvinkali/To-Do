@@ -1,0 +1,4 @@
+# Momentum is a static single-page app — no build step, publish the repo root.
+[build]
+  publish = "."
+  command = ""
