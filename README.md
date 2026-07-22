@@ -1,5 +1,13 @@
 # Momentum — a calmer to-do
 
+[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/irvinkali/To-Do)
+
+**One-click deploy:** click the button above, authorize Netlify with GitHub if
+asked, and it'll host Momentum at its own URL. No build settings to change —
+the `netlify.toml` handles everything. Then open the URL, tap **Connect**, and
+paste your Supabase URL + publishable key (same project as your command app).
+
+
 A single-file, ADHD-aware **daily lens** over your existing synced task list.
 Open `index.html` in any browser. It reads and writes the **same tasks as your
 command app** (via that app's Supabase), so everything syncs across your devices
